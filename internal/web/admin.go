@@ -203,12 +203,23 @@ func (h *AdminHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		storeType = "MEMORY"
 	}
 
-	// Live info from Sentinel for each cluster.
-	liveInfo := make(map[string]*core.MasterDetail)
+	// Live info from Sentinel for each cluster (parallel).
+	type dashInfo struct {
+		name   string
+		detail *core.MasterDetail
+	}
+	dashCh := make(chan dashInfo, len(clusters))
 	for _, c := range clusters {
-		detail := core.GetMasterDetail(ctx, c.SentinelAddrs, c.MasterName, c.SentinelPassword)
-		if detail != nil {
-			liveInfo[c.MasterName] = detail
+		go func(c *models.Cluster) {
+			d := core.GetMasterDetail(ctx, c.SentinelAddrs, c.MasterName, c.SentinelPassword)
+			dashCh <- dashInfo{name: c.MasterName, detail: d}
+		}(c)
+	}
+	liveInfo := make(map[string]*core.MasterDetail, len(clusters))
+	for range clusters {
+		info := <-dashCh
+		if info.detail != nil {
+			liveInfo[info.name] = info.detail
 		}
 	}
 
@@ -299,38 +310,48 @@ func (h *AdminHandler) Clusters(w http.ResponseWriter, r *http.Request) {
 		dnsProvidersWithZone[name] = cfg["zone_name"]
 	}
 
-	// Live info from Sentinel for each cluster.
-	liveInfo := make(map[string]*core.MasterDetail)
+	// Live info + DNS resolve in parallel for all clusters.
+	type clusterInfo struct {
+		name   string
+		detail *core.MasterDetail
+		dns    map[string][]string
+	}
+	infoCh := make(chan clusterInfo, len(clusters))
+
 	for _, c := range clusters {
-		detail := core.GetMasterDetail(ctx, c.SentinelAddrs, c.MasterName, c.SentinelPassword)
-		if detail != nil {
-			liveInfo[c.MasterName] = detail
+		go func(c *models.Cluster) {
+			detail := core.GetMasterDetail(ctx, c.SentinelAddrs, c.MasterName, c.SentinelPassword)
+
+			rec := map[string][]string{"primary_ips": nil, "replica_ips": nil}
+			if c.PrimaryDNS.RecordName != "" && c.PrimaryDNS.Zone != "" {
+				if ips, err := net.LookupHost(c.PrimaryDNS.RecordName + "." + c.PrimaryDNS.Zone); err == nil {
+					rec["primary_ips"] = ips
+				}
+			}
+			if c.ReplicaDNS != nil && c.ReplicaDNS.RecordName != "" && c.ReplicaDNS.Zone != "" {
+				if ips, err := net.LookupHost(c.ReplicaDNS.RecordName + "." + c.ReplicaDNS.Zone); err == nil {
+					rec["replica_ips"] = ips
+				}
+			}
+
+			infoCh <- clusterInfo{name: c.MasterName, detail: detail, dns: rec}
+		}(c)
+	}
+
+	liveInfo := make(map[string]*core.MasterDetail, len(clusters))
+	dnsRecords := make(map[string]map[string][]string, len(clusters))
+	for range clusters {
+		info := <-infoCh
+		if info.detail != nil {
+			liveInfo[info.name] = info.detail
 		}
+		dnsRecords[info.name] = info.dns
 	}
 
 	// Sentinels by group.
 	sentinelsByGroup := make(map[string][]*models.Sentinel)
 	for _, s := range sentinels {
 		sentinelsByGroup[s.GroupName] = append(sentinelsByGroup[s.GroupName], s)
-	}
-
-	// DNS A record resolve for each cluster.
-	dnsRecords := make(map[string]map[string][]string)
-	for _, c := range clusters {
-		rec := map[string][]string{"primary_ips": nil, "replica_ips": nil}
-		if c.PrimaryDNS.RecordName != "" && c.PrimaryDNS.Zone != "" {
-			fqdn := c.PrimaryDNS.RecordName + "." + c.PrimaryDNS.Zone
-			if ips, err := net.LookupHost(fqdn); err == nil {
-				rec["primary_ips"] = ips
-			}
-		}
-		if c.ReplicaDNS != nil && c.ReplicaDNS.RecordName != "" && c.ReplicaDNS.Zone != "" {
-			fqdn := c.ReplicaDNS.RecordName + "." + c.ReplicaDNS.Zone
-			if ips, err := net.LookupHost(fqdn); err == nil {
-				rec["replica_ips"] = ips
-			}
-		}
-		dnsRecords[c.MasterName] = rec
 	}
 
 	// Pagination (15 per page).
