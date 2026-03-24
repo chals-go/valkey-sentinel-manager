@@ -60,6 +60,7 @@ func TemplateFuncMap(t func(string) string) template.FuncMap {
 			}
 			return s
 		},
+		"csrfToken": func() string { return "" },
 		"mapLen": func(m any) int {
 			switch v := m.(type) {
 			case map[string]any:
