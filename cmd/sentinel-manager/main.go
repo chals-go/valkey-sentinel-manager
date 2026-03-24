@@ -190,7 +190,11 @@ func main() {
 	}
 
 	// Build router and register routes.
-	mux := server.NewRouter(vsm.StaticFS)
+	mux, err := server.NewRouter(vsm.StaticFS)
+	if err != nil {
+		slog.Error("failed to create router", "error", err)
+		os.Exit(1)
+	}
 	api.RegisterRoutes(mux, st, fm, dnsProviders)
 
 	sm := web.NewSessionManager(st, cfg.SecureCookie)
@@ -203,7 +207,7 @@ func main() {
 	admin.RegisterRoutes(mux)
 
 	// Apply middleware chain: SecurityHeaders → RequestLogger → mux
-	handler := server.SecurityHeaders(server.RequestLogger(mux))
+	handler := server.SecurityHeadersWithOptions(server.RequestLogger(mux), cfg.SecureCookie)
 
 	if err := server.Run(cfg.Addr(), handler); err != nil {
 		slog.Error("server error", "error", err)

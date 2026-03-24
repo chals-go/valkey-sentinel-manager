@@ -86,7 +86,9 @@ func (sm *SessionManager) ClearLoginFailures(ip string) {
 // HashPassword hashes a password with a random salt using SHA-256.
 func HashPassword(password string) string {
 	salt := make([]byte, 16)
-	rand.Read(salt)
+	if _, err := rand.Read(salt); err != nil {
+		panic("crypto/rand failed: " + err.Error())
+	}
 	saltHex := hex.EncodeToString(salt)
 	hash := sha256.Sum256([]byte(saltHex + password))
 	return saltHex + saltSep + hex.EncodeToString(hash[:])
@@ -119,7 +121,9 @@ func (sm *SessionManager) VerifyPassword(ctx interface{ Value(any) any }, passwo
 // CreateSession creates a new session and returns the session ID.
 func (sm *SessionManager) CreateSession() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto/rand failed: " + err.Error())
+	}
 	id := hex.EncodeToString(b)
 	sm.mu.Lock()
 	sm.sessions[id] = time.Now().Add(sessionTTL)
@@ -214,6 +218,8 @@ func (sm *SessionManager) IsDefaultPassword() bool {
 // GenerateAPIToken generates a new API token with smgr_ prefix.
 func GenerateAPIToken() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto/rand failed: " + err.Error())
+	}
 	return fmt.Sprintf("smgr_%s", hex.EncodeToString(b))
 }

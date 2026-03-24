@@ -55,9 +55,9 @@
             <option value="service_principal" {{ if eq .Data.AuthType "service_principal" }}selected{{ end }}>{{ t "service_principal" }}</option>
           </select>
         </div>
-        <div id="edit-az-credential-fields" style="{{ if eq .Data.AuthType "system_identity" }}display:none{{ end }}">
+        <div id="edit-az-credential-fields" class="{{ if eq .Data.AuthType "system_identity" }}hidden{{ end }}">
           <div class="mb-4 max-w-sm"><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "client_id" }}</label><input type="text" name="az_client_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
-          <div id="edit-az-sp-extra" style="{{ if ne .Data.AuthType "service_principal" }}display:none{{ end }}" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div id="edit-az-sp-extra" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 {{ if ne .Data.AuthType "service_principal" }}hidden{{ end }}"
             <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "tenant_id" }}</label><input type="text" name="az_tenant_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
             <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "client_secret" }}</label><input type="password" name="az_client_secret" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none" placeholder="Leave blank to keep current"></div>
           </div>
@@ -66,8 +66,10 @@
       <script>
       function toggleEditAzureAuth(authType) {
           var show = authType === 'user_identity' || authType === 'service_principal';
-          document.getElementById('edit-az-credential-fields').style.display = show ? '' : 'none';
-          document.getElementById('edit-az-sp-extra').style.display = authType === 'service_principal' ? '' : 'none';
+          var cred = document.getElementById('edit-az-credential-fields');
+          var sp = document.getElementById('edit-az-sp-extra');
+          if (cred) { cred.classList.toggle('hidden', !show); }
+          if (sp) { sp.classList.toggle('hidden', authType !== 'service_principal'); }
       }
       </script>
       {{ end }}

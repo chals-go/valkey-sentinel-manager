@@ -14,11 +14,17 @@ import (
 
 func setupTestMux() (*http.ServeMux, store.Store) {
 	s := store.NewMemoryStore(30)
+	// Set up a test API token so auth passes.
+	s.SetAPIToken(nil, "test-token-123")
 	ep := core.NewEventProcessor(s)
 	fm := core.NewFailoverManager(s, ep, map[string]dns.Provider{})
 	mux := http.NewServeMux()
 	RegisterRoutes(mux, s, fm, map[string]dns.Provider{})
 	return mux, s
+}
+
+func authHeader(req *http.Request) {
+	req.Header.Set("Authorization", "Bearer test-token-123")
 }
 
 func TestHealthEndpoint(t *testing.T) {
@@ -40,15 +46,20 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestTokenAuth_NoToken(t *testing.T) {
-	mux, _ := setupTestMux()
+	// Fresh store with no tokens at all.
+	s := store.NewMemoryStore(30)
+	ep := core.NewEventProcessor(s)
+	fm := core.NewFailoverManager(s, ep, map[string]dns.Provider{})
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, s, fm, map[string]dns.Provider{})
 
-	// No token configured — should allow access without auth.
+	// No token configured — should DENY access (401).
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/events", nil)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d (no token = open access)", rec.Code, http.StatusOK)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d (no token = deny)", rec.Code, http.StatusUnauthorized)
 	}
 }
 
@@ -100,6 +111,7 @@ func TestClusterCRUD(t *testing.T) {
 	}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/clusters", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
+	authHeader(req)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusCreated {
@@ -108,6 +120,7 @@ func TestClusterCRUD(t *testing.T) {
 
 	// List clusters.
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/clusters", nil)
+	authHeader(req)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -116,6 +129,7 @@ func TestClusterCRUD(t *testing.T) {
 
 	// Get cluster.
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/clusters/test-master", nil)
+	authHeader(req)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -125,6 +139,7 @@ func TestClusterCRUD(t *testing.T) {
 	// Duplicate → 409.
 	req = httptest.NewRequest(http.MethodPost, "/api/v1/clusters", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
+	authHeader(req)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusConflict {
@@ -133,6 +148,7 @@ func TestClusterCRUD(t *testing.T) {
 
 	// Delete cluster.
 	req = httptest.NewRequest(http.MethodDelete, "/api/v1/clusters/test-master", nil)
+	authHeader(req)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -141,6 +157,7 @@ func TestClusterCRUD(t *testing.T) {
 
 	// Get after delete → 404.
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/clusters/test-master", nil)
+	authHeader(req)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
@@ -155,6 +172,7 @@ func TestSentinelCRUD(t *testing.T) {
 	body := `{"sentinel_node_name": "s1", "group_name": "grp1", "host": "10.0.0.1", "port": 26379}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sentinels", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
+	authHeader(req)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusCreated {
@@ -163,6 +181,7 @@ func TestSentinelCRUD(t *testing.T) {
 
 	// List sentinels.
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/sentinels", nil)
+	authHeader(req)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -171,6 +190,7 @@ func TestSentinelCRUD(t *testing.T) {
 
 	// Get sentinel.
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/sentinels/s1", nil)
+	authHeader(req)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -180,6 +200,7 @@ func TestSentinelCRUD(t *testing.T) {
 	// Duplicate → 409.
 	req = httptest.NewRequest(http.MethodPost, "/api/v1/sentinels", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
+	authHeader(req)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusConflict {
@@ -188,6 +209,7 @@ func TestSentinelCRUD(t *testing.T) {
 
 	// Delete sentinel.
 	req = httptest.NewRequest(http.MethodDelete, "/api/v1/sentinels/s1", nil)
+	authHeader(req)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -196,6 +218,7 @@ func TestSentinelCRUD(t *testing.T) {
 
 	// Get after delete → 404.
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/sentinels/s1", nil)
+	authHeader(req)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
@@ -215,6 +238,7 @@ func TestEventCreate(t *testing.T) {
 	}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/events", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
+	authHeader(req)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 

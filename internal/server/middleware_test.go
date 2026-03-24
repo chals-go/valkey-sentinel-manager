@@ -17,10 +17,10 @@ func TestSecurityHeaders(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	expected := map[string]string{
-		"X-Content-Type-Options": "nosniff",
-		"X-Frame-Options":       "DENY",
-		"X-Xss-Protection":      "1; mode=block",
-		"Referrer-Policy":       "strict-origin-when-cross-origin",
+		"X-Content-Type-Options":            "nosniff",
+		"X-Frame-Options":                   "DENY",
+		"Referrer-Policy":                   "strict-origin-when-cross-origin",
+		"X-Permitted-Cross-Domain-Policies": "none",
 	}
 	for header, want := range expected {
 		got := rec.Header().Get(header)

@@ -17,8 +17,8 @@ func TokenAuth(s store.Store) func(http.Handler) http.Handler {
 			// Check multi-token from runtime settings first.
 			validTokens := getValidTokens(s, r)
 			if len(validTokens) == 0 {
-				// No tokens configured — allow access.
-				next.ServeHTTP(w, r)
+				// No tokens configured — deny access.
+				writeError(w, http.StatusUnauthorized, "No API tokens configured. Create a token in Settings > API Token.")
 				return
 			}
 

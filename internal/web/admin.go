@@ -1065,7 +1065,6 @@ func (h *AdminHandler) DNSProviderEditSubmit(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 	providerName := r.PathValue("providerName")
 	r.ParseForm()
-	t := NewTranslator(h.lang)
 
 	providerType := strings.TrimSpace(r.FormValue("provider_type"))
 	cfg := map[string]string{"type": providerType}
@@ -1099,7 +1098,6 @@ func (h *AdminHandler) DNSProviderEditSubmit(w http.ResponseWriter, r *http.Requ
 		h.dnsProviders[providerName] = p
 	}
 
-	_ = t
 	h.redirect(w, r, "/admin/settings/dns")
 }
 
@@ -1116,7 +1114,9 @@ func (h *AdminHandler) getAPITokens(ctx context.Context) map[string]string {
 	rt, _ := h.store.GetRuntimeSettings(ctx)
 	tokens := make(map[string]string)
 	if raw, ok := rt["api_tokens"]; ok && raw != "" {
-		json.Unmarshal([]byte(raw), &tokens)
+		if err := json.Unmarshal([]byte(raw), &tokens); err != nil {
+			slog.Warn("failed to parse api_tokens JSON", "error", err)
+		}
 	}
 	// Backward compat: migrate single token.
 	if len(tokens) == 0 {
@@ -1340,5 +1340,3 @@ func sortedKeys(m map[string]bool) []string {
 	return keys
 }
 
-// Suppress unused import warning.
-var _ = slog.Info

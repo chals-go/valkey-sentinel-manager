@@ -156,18 +156,21 @@ func (hc *SentinelHealthChecker) tick(ctx context.Context) {
 		}
 	}
 
-	// Detect transitions, record events, send alerts.
+	// Detect transitions under lock, collect actions, execute outside lock.
+	type transition struct {
+		group, name, addr string
+		eventType         models.EventType
+		down              bool
+	}
+	var transitions []transition
+
 	hc.mu.Lock()
 	for name, connected := range newStatuses {
 		wasConnected, existed := hc.prevState[name]
 		if existed && wasConnected && !connected {
-			// Transition: connected → disconnected.
-			go hc.recordSentinelEvent(nodeGroups[name], name, nodeAddrs[name], models.EventTypeSentinelDown)
-			go hc.sendDownAlert(nodeGroups[name], name, nodeAddrs[name])
+			transitions = append(transitions, transition{nodeGroups[name], name, nodeAddrs[name], models.EventTypeSentinelDown, true})
 		} else if existed && !wasConnected && connected {
-			// Transition: disconnected → connected.
-			go hc.recordSentinelEvent(nodeGroups[name], name, nodeAddrs[name], models.EventTypeSentinelUp)
-			go hc.sendUpAlert(nodeGroups[name], name, nodeAddrs[name])
+			transitions = append(transitions, transition{nodeGroups[name], name, nodeAddrs[name], models.EventTypeSentinelUp, false})
 		}
 	}
 	hc.prevState = make(map[string]bool, len(newStatuses))
@@ -176,6 +179,16 @@ func (hc *SentinelHealthChecker) tick(ctx context.Context) {
 	}
 	hc.statuses = newStatuses
 	hc.mu.Unlock()
+
+	// Execute transitions outside lock to avoid deadlock.
+	for _, t := range transitions {
+		go hc.recordSentinelEvent(t.group, t.name, t.addr, t.eventType)
+		if t.down {
+			go hc.sendDownAlert(t.group, t.name, t.addr)
+		} else {
+			go hc.sendUpAlert(t.group, t.name, t.addr)
+		}
+	}
 }
 
 func (hc *SentinelHealthChecker) recordSentinelEvent(groupName, nodeName, addr string, eventType models.EventType) {

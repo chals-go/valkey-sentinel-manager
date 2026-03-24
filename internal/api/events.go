@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/chals-go/valkey-sentinel-manager/internal/core"
 	"github.com/chals-go/valkey-sentinel-manager/internal/models"
@@ -45,9 +46,10 @@ func CreateEventHandler(s store.Store, fm *core.FailoverManager) http.HandlerFun
 			"sentinel", event.SentinelNodeName,
 		)
 
-		// Process in background goroutine with detached context.
+		// Process in background goroutine with timeout.
 		go func() {
-			bgCtx := context.Background()
+			bgCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			defer cancel()
 			if _, err := fm.HandleEvent(bgCtx, event); err != nil {
 				slog.Error("event processing failed", "error", err)
 			}

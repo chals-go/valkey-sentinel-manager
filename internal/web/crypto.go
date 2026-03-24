@@ -37,7 +37,9 @@ func NewEncryptor(keyB64 string) *Encryptor {
 		slog.Warn("SMGR_ENCRYPTION_KEY not set, generating temporary key — encrypted data won't survive restart")
 	}
 	key := make([]byte, 32)
-	rand.Read(key)
+	if _, err := rand.Read(key); err != nil {
+		panic("crypto/rand failed: " + err.Error())
+	}
 	return &Encryptor{key: key}
 }
 
@@ -57,7 +59,10 @@ func (e *Encryptor) Encrypt(plaintext string) string {
 		return plaintext
 	}
 	nonce := make([]byte, gcm.NonceSize())
-	rand.Read(nonce)
+	if _, err := rand.Read(nonce); err != nil {
+		slog.Error("crypto/rand failed for nonce", "error", err)
+		return plaintext
+	}
 	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
 	return encPrefix + base64.StdEncoding.EncodeToString(ciphertext)
 }
