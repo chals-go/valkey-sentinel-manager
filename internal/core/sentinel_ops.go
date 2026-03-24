@@ -11,7 +11,7 @@ import (
 	"github.com/valkey-io/valkey-go"
 )
 
-// SlaveInfo holds information about a replica reported by Sentinel.
+// SlaveInfo는 센티널이 보고하는 레플리카 노드 정보를 담는 구조체이다.
 type SlaveInfo struct {
 	IP     string `json:"ip"`
 	Port   int    `json:"port"`
@@ -19,7 +19,7 @@ type SlaveInfo struct {
 	Status string `json:"status"`
 }
 
-// MasterDetail holds master and replica information from Sentinel.
+// MasterDetail는 센티널에서 조회한 마스터 및 레플리카 상세 정보를 담는 구조체이다.
 type MasterDetail struct {
 	Name            string      `json:"name"`
 	MasterIP        string      `json:"master_ip"`
@@ -32,7 +32,7 @@ type MasterDetail struct {
 	FailoverTimeout int         `json:"failover_timeout"`
 }
 
-// TestFailoverResult holds the result of a test failover command.
+// TestFailoverResult는 테스트 페일오버 명령 실행 결과를 담는 구조체이다.
 type TestFailoverResult struct {
 	Success     bool   `json:"success"`
 	PrimaryIP   string `json:"primary_ip"`
@@ -40,7 +40,7 @@ type TestFailoverResult struct {
 	Message     string `json:"message"`
 }
 
-// parseSentinelAddr splits "host:port" into host and port.
+// parseSentinelAddr는 "host:port" 형식의 주소를 호스트와 포트로 분리한다.
 func parseSentinelAddr(addr string) (string, int) {
 	if idx := strings.LastIndex(addr, ":"); idx >= 0 {
 		port, err := strconv.Atoi(addr[idx+1:])
@@ -63,7 +63,7 @@ func newSentinelClient(addr, password string) (valkey.Client, error) {
 	return valkey.NewClient(opts)
 }
 
-// PingSentinel checks connectivity to a Sentinel instance.
+// PingSentinel은 지정한 센티널 인스턴스의 연결 가능 여부를 확인한다.
 func PingSentinel(ctx context.Context, host string, port int, password string) bool {
 	addr := fmt.Sprintf("%s:%d", host, port)
 	client, err := newSentinelClient(addr, password)
@@ -74,7 +74,7 @@ func PingSentinel(ctx context.Context, host string, port int, password string) b
 	return client.Do(ctx, client.B().Ping().Build()).Error() == nil
 }
 
-// SentinelMonitor registers a new master on all given Sentinel instances.
+// SentinelMonitor는 주어진 모든 센티널 인스턴스에 새 마스터를 등록한다.
 func SentinelMonitor(ctx context.Context, sentinelAddrs []string, masterName, masterIP string, masterPort, quorum int, authPass, sentinelPassword string, downAfterMs, failoverTimeout int) map[string]bool {
 	results := make(map[string]bool, len(sentinelAddrs))
 
@@ -116,7 +116,7 @@ func SentinelMonitor(ctx context.Context, sentinelAddrs []string, masterName, ma
 	return results
 }
 
-// SentinelSetConfig updates down-after-milliseconds and failover-timeout on Sentinels.
+// SentinelSetConfig는 센티널 인스턴스들의 down-after-milliseconds 및 failover-timeout 설정을 갱신한다.
 func SentinelSetConfig(ctx context.Context, sentinelAddrs []string, masterName, sentinelPassword string, downAfterMs, failoverTimeout int) map[string]bool {
 	results := make(map[string]bool, len(sentinelAddrs))
 	for _, addr := range sentinelAddrs {
@@ -133,7 +133,7 @@ func SentinelSetConfig(ctx context.Context, sentinelAddrs []string, masterName, 
 	return results
 }
 
-// SentinelRemove removes a master from all given Sentinel instances.
+// SentinelRemove는 주어진 모든 센티널 인스턴스에서 마스터 등록을 해제한다.
 func SentinelRemove(ctx context.Context, sentinelAddrs []string, masterName, sentinelPassword string) map[string]bool {
 	results := make(map[string]bool, len(sentinelAddrs))
 	for _, addr := range sentinelAddrs {
@@ -155,8 +155,8 @@ func SentinelRemove(ctx context.Context, sentinelAddrs []string, masterName, sen
 	return results
 }
 
-// GetMasterDetail queries Sentinel for master + slave details.
-// Tries each Sentinel address in order; returns nil if all fail.
+// GetMasterDetail는 센티널에 마스터와 슬레이브 상세 정보를 조회한다.
+// 센티널 주소를 순서대로 시도하며, 모두 실패하면 nil을 반환한다.
 func GetMasterDetail(ctx context.Context, sentinelAddrs []string, masterName, sentinelPassword string) *MasterDetail {
 	for _, addr := range sentinelAddrs {
 		detail, err := getMasterDetailFromAddr(ctx, addr, masterName, sentinelPassword)
@@ -170,7 +170,7 @@ func GetMasterDetail(ctx context.Context, sentinelAddrs []string, masterName, se
 	return nil
 }
 
-// parseSentinelResult tries to parse a ValkeyResult as a map (RESP3) or flat array (RESP2).
+// parseSentinelResult는 ValkeyResult를 맵(RESP3) 또는 플랫 배열(RESP2)로 파싱한다.
 func parseSentinelResult(resp valkey.ValkeyResult) (map[string]string, error) {
 	if m, err := resp.AsStrMap(); err == nil {
 		return m, nil
@@ -181,7 +181,7 @@ func parseSentinelResult(resp valkey.ValkeyResult) (map[string]string, error) {
 	return nil, fmt.Errorf("cannot parse sentinel response")
 }
 
-// parseSentinelMessage tries to parse a ValkeyMessage as a map (RESP3) or flat array (RESP2).
+// parseSentinelMessage는 ValkeyMessage를 맵(RESP3) 또는 플랫 배열(RESP2)로 파싱한다.
 func parseSentinelMessage(msg valkey.ValkeyMessage) (map[string]string, error) {
 	if m, err := msg.AsStrMap(); err == nil {
 		return m, nil
@@ -263,7 +263,7 @@ func getMasterDetailFromAddr(ctx context.Context, addr, masterName, sentinelPass
 	}, nil
 }
 
-// TriggerTestFailover sends SENTINEL FAILOVER to force an immediate failover.
+// TriggerTestFailover는 SENTINEL FAILOVER 명령을 전송하여 즉시 페일오버를 강제 실행한다.
 func TriggerTestFailover(ctx context.Context, sentinelAddrs []string, masterName, sentinelPassword string) *TestFailoverResult {
 	detail := GetMasterDetail(ctx, sentinelAddrs, masterName, sentinelPassword)
 	currentPrimary := ""
@@ -312,7 +312,7 @@ func TriggerTestFailover(ctx context.Context, sentinelAddrs []string, masterName
 	}
 }
 
-// flatSliceToMap converts [key, value, key, value, ...] into a map.
+// flatSliceToMap은 [key, value, key, value, ...] 형태의 슬라이스를 맵으로 변환한다.
 func flatSliceToMap(items []string) map[string]string {
 	m := make(map[string]string, len(items)/2)
 	for i := 0; i+1 < len(items); i += 2 {

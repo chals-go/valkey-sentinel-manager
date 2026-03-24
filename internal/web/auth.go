@@ -24,7 +24,7 @@ const (
 	saltSep            = "$"
 )
 
-// SessionManager handles cookie-based session auth and brute-force protection.
+// SessionManager는 쿠키 기반 세션 인증과 브루트포스 방어를 담당하는 구조체다.
 type SessionManager struct {
 	store         store.Store
 	secureCookie  bool
@@ -39,7 +39,7 @@ type loginAttemptRecord struct {
 	lastFail time.Time
 }
 
-// NewSessionManager creates a SessionManager.
+// NewSessionManager는 SessionManager를 생성하여 반환한다.
 func NewSessionManager(s store.Store, secureCookie bool) *SessionManager {
 	return &SessionManager{
 		store:         s,
@@ -49,7 +49,7 @@ func NewSessionManager(s store.Store, secureCookie bool) *SessionManager {
 	}
 }
 
-// IsLoginLocked checks if an IP is locked out due to too many failures.
+// IsLoginLocked는 주어진 IP가 로그인 실패 횟수 초과로 잠금 상태인지 확인한다.
 func (sm *SessionManager) IsLoginLocked(ip string) bool {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -66,7 +66,7 @@ func (sm *SessionManager) IsLoginLocked(ip string) bool {
 	return false
 }
 
-// RecordLoginFailure records a failed login attempt.
+// RecordLoginFailure는 주어진 IP의 로그인 실패 횟수를 기록한다.
 func (sm *SessionManager) RecordLoginFailure(ip string) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -76,14 +76,14 @@ func (sm *SessionManager) RecordLoginFailure(ip string) {
 	sm.loginAttempts[ip] = rec
 }
 
-// ClearLoginFailures clears failed login attempts on success.
+// ClearLoginFailures는 로그인 성공 시 해당 IP의 실패 기록을 초기화한다.
 func (sm *SessionManager) ClearLoginFailures(ip string) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	delete(sm.loginAttempts, ip)
 }
 
-// HashPassword hashes a password with a random salt using SHA-256.
+// HashPassword는 무작위 솔트를 사용하여 SHA-256으로 비밀번호를 해시한다.
 func HashPassword(password string) string {
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
@@ -94,7 +94,7 @@ func HashPassword(password string) string {
 	return saltHex + saltSep + hex.EncodeToString(hash[:])
 }
 
-// VerifyHash compares a password against a stored hash.
+// VerifyHash는 입력된 비밀번호와 저장된 해시값을 비교하여 일치 여부를 반환한다.
 func VerifyHash(password, stored string) bool {
 	for i, c := range stored {
 		if string(c) == saltSep {
@@ -109,7 +109,7 @@ func VerifyHash(password, stored string) bool {
 	return hmac.Equal([]byte(hex.EncodeToString(h[:])), []byte(stored))
 }
 
-// VerifyPassword checks if the given password matches the stored admin hash.
+// VerifyPassword는 입력된 비밀번호가 저장소에 저장된 관리자 비밀번호 해시와 일치하는지 확인한다.
 func (sm *SessionManager) VerifyPassword(ctx interface{ Value(any) any }, password string) bool {
 	hash, err := sm.store.GetAdminPasswordHash(context.Background())
 	if err != nil || hash == "" {
@@ -118,7 +118,7 @@ func (sm *SessionManager) VerifyPassword(ctx interface{ Value(any) any }, passwo
 	return VerifyHash(password, hash)
 }
 
-// CreateSession creates a new session and returns the session ID.
+// CreateSession은 새 세션을 생성하고 세션 ID를 반환한다.
 func (sm *SessionManager) CreateSession() string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -132,7 +132,7 @@ func (sm *SessionManager) CreateSession() string {
 	return id
 }
 
-// ValidateSession checks if the session cookie is valid.
+// ValidateSession은 요청의 세션 쿠키가 유효한지 확인한다.
 func (sm *SessionManager) ValidateSession(r *http.Request) bool {
 	cookie, err := r.Cookie(sessionCookie)
 	if err != nil || cookie.Value == "" {
@@ -148,7 +148,7 @@ func (sm *SessionManager) ValidateSession(r *http.Request) bool {
 	return true
 }
 
-// SetSessionCookie sets the session cookie on the response.
+// SetSessionCookie는 응답에 세션 쿠키를 설정한다.
 func (sm *SessionManager) SetSessionCookie(w http.ResponseWriter, sessionID string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,
@@ -161,7 +161,7 @@ func (sm *SessionManager) SetSessionCookie(w http.ResponseWriter, sessionID stri
 	})
 }
 
-// ClearSessionCookie removes the session cookie.
+// ClearSessionCookie는 응답에서 세션 쿠키를 제거한다.
 func (sm *SessionManager) ClearSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,
@@ -172,7 +172,7 @@ func (sm *SessionManager) ClearSessionCookie(w http.ResponseWriter) {
 	})
 }
 
-// DestroySession removes a session by ID.
+// DestroySession은 요청의 쿠키에서 세션 ID를 읽어 세션을 제거한다.
 func (sm *SessionManager) DestroySession(r *http.Request) {
 	cookie, err := r.Cookie(sessionCookie)
 	if err != nil {
@@ -183,7 +183,7 @@ func (sm *SessionManager) DestroySession(r *http.Request) {
 	sm.mu.Unlock()
 }
 
-// RequireAuth is middleware that redirects to login if not authenticated.
+// RequireAuth는 인증되지 않은 요청을 로그인 페이지로 리다이렉트하는 미들웨어다.
 func (sm *SessionManager) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !sm.ValidateSession(r) {
@@ -203,19 +203,19 @@ func (sm *SessionManager) cleanupLocked() {
 	}
 }
 
-// ChangePassword sets a new admin password.
+// ChangePassword는 새 관리자 비밀번호를 해시하여 저장소에 저장한다.
 func (sm *SessionManager) ChangePassword(password string) error {
 	hash := HashPassword(password)
 	return sm.store.SetAdminPasswordHash(context.Background(), hash)
 }
 
-// IsDefaultPassword checks if default password is still in use.
+// IsDefaultPassword는 저장소에 비밀번호 해시가 없어 기본 비밀번호를 사용 중인지 확인한다.
 func (sm *SessionManager) IsDefaultPassword() bool {
 	hash, err := sm.store.GetAdminPasswordHash(context.Background())
 	return err != nil || hash == ""
 }
 
-// GenerateAPIToken generates a new API token with smgr_ prefix.
+// GenerateAPIToken은 smgr_ 접두사가 붙은 새 API 토큰을 생성하여 반환한다.
 func GenerateAPIToken() string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {

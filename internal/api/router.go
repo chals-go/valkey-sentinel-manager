@@ -8,7 +8,9 @@ import (
 	"github.com/chals-go/valkey-sentinel-manager/internal/store"
 )
 
-// RegisterRoutes registers all API routes on the given mux.
+// RegisterRoutes는 주어진 ServeMux에 모든 API 라우트를 등록한다.
+// /api/v1/health 엔드포인트는 인증 없이 접근 가능하며,
+// 나머지 엔드포인트는 TokenAuth 미들웨어로 보호된다.
 func RegisterRoutes(mux *http.ServeMux, s store.Store, fm *core.FailoverManager, providers map[string]dns.Provider) {
 	// Health — no auth required.
 	mux.HandleFunc("GET /api/v1/health", HealthHandler(providers))

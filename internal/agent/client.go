@@ -10,7 +10,8 @@ import (
 	"time"
 )
 
-// SendEvent posts an event payload to the Monitor server with retries.
+// SendEvent는 이벤트 페이로드를 Monitor 서버로 전송하며, 실패 시 재시도한다.
+// 전송에 성공하면 true를, 모든 재시도가 소진되면 false를 반환한다.
 func SendEvent(cfg *Config, payload map[string]any) bool {
 	data, err := json.Marshal(payload)
 	if err != nil {

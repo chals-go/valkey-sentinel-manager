@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// Run starts the HTTP server and blocks until a shutdown signal is received.
-// It performs a graceful shutdown with a 10-second timeout.
+// Run은 HTTP 서버를 시작하고 종료 신호를 받을 때까지 블로킹한다.
+// 10초 타임아웃으로 그레이스풀 셧다운을 수행한다.
 func Run(addr string, handler http.Handler) error {
 	srv := &http.Server{
 		Addr:         addr,

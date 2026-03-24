@@ -16,8 +16,8 @@ type dedupEntry struct {
 	expiresAt float64
 }
 
-// MemoryStore is an in-memory Store implementation for development and testing.
-// Data is lost when the process exits.
+// MemoryStore는 개발 및 테스트 용도의 인메모리 저장소 구현체이다.
+// 프로세스가 종료되면 모든 데이터는 소실된다.
 type MemoryStore struct {
 	dedupWindow float64 // seconds
 
@@ -35,7 +35,8 @@ type MemoryStore struct {
 	dnsConfigs    map[string]map[string]string
 }
 
-// NewMemoryStore creates a new in-memory store.
+// NewMemoryStore는 새로운 인메모리 저장소를 생성하여 반환한다.
+// dedupWindowSeconds는 이벤트 중복 제거 윈도우 크기(초 단위)이다.
 func NewMemoryStore(dedupWindowSeconds int) *MemoryStore {
 	return &MemoryStore{
 		dedupWindow:   float64(dedupWindowSeconds),
@@ -60,7 +61,7 @@ func (m *MemoryStore) cleanupExpired(now float64) {
 	}
 }
 
-// RecordEvent records a failover event and returns the current report count.
+// RecordEvent는 페일오버 이벤트를 기록하고 현재 보고 횟수를 반환한다.
 func (m *MemoryStore) RecordEvent(_ context.Context, event *models.FailoverEvent) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -87,7 +88,7 @@ func (m *MemoryStore) RecordEvent(_ context.Context, event *models.FailoverEvent
 	return 1, nil
 }
 
-// GetEventCount returns the current report count for a dedup key.
+// GetEventCount는 지정한 중복 제거 키에 대한 현재 보고 횟수를 반환한다.
 func (m *MemoryStore) GetEventCount(_ context.Context, dedupKey string) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -99,7 +100,7 @@ func (m *MemoryStore) GetEventCount(_ context.Context, dedupKey string) (int, er
 	return 0, nil
 }
 
-// GetRecentEvents returns the most recent events up to limit.
+// GetRecentEvents는 최근 이벤트를 limit 개수만큼 반환한다.
 func (m *MemoryStore) GetRecentEvents(_ context.Context, limit int) ([]*models.FailoverEvent, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -112,7 +113,7 @@ func (m *MemoryStore) GetRecentEvents(_ context.Context, limit int) ([]*models.F
 	return result, nil
 }
 
-// AcquireLock acquires a distributed lock.
+// AcquireLock은 지정한 키에 대한 분산 락을 획득한다.
 func (m *MemoryStore) AcquireLock(_ context.Context, key string, ttl time.Duration) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -125,7 +126,7 @@ func (m *MemoryStore) AcquireLock(_ context.Context, key string, ttl time.Durati
 	return true, nil
 }
 
-// ReleaseLock releases a distributed lock.
+// ReleaseLock은 지정한 키에 대한 분산 락을 해제한다.
 func (m *MemoryStore) ReleaseLock(_ context.Context, key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -134,7 +135,7 @@ func (m *MemoryStore) ReleaseLock(_ context.Context, key string) error {
 	return nil
 }
 
-// RegisterSentinel registers a sentinel node.
+// RegisterSentinel은 센티널 노드를 등록한다.
 func (m *MemoryStore) RegisterSentinel(_ context.Context, s *models.Sentinel) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -143,7 +144,7 @@ func (m *MemoryStore) RegisterSentinel(_ context.Context, s *models.Sentinel) er
 	return nil
 }
 
-// UnregisterSentinel removes a sentinel node.
+// UnregisterSentinel은 센티널 노드를 제거한다.
 func (m *MemoryStore) UnregisterSentinel(_ context.Context, name string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -155,7 +156,7 @@ func (m *MemoryStore) UnregisterSentinel(_ context.Context, name string) (bool, 
 	return false, nil
 }
 
-// GetSentinel returns a sentinel by name.
+// GetSentinel은 이름으로 센티널을 조회한다.
 func (m *MemoryStore) GetSentinel(_ context.Context, name string) (*models.Sentinel, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -167,8 +168,7 @@ func (m *MemoryStore) GetSentinel(_ context.Context, name string) (*models.Senti
 	return s, nil
 }
 
-// ListSentinels returns all sentinels, optionally filtered by group name.
-// Pass empty string for groupName to list all.
+// ListSentinels는 모든 센티널 목록을 반환한다. groupName이 비어있으면 전체를 반환한다.
 func (m *MemoryStore) ListSentinels(_ context.Context, groupName string) ([]*models.Sentinel, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -183,7 +183,7 @@ func (m *MemoryStore) ListSentinels(_ context.Context, groupName string) ([]*mod
 	return result, nil
 }
 
-// UpdateSentinelLastSeen updates the last seen timestamp.
+// UpdateSentinelLastSeen은 센티널의 마지막 접속 시각을 갱신한다.
 func (m *MemoryStore) UpdateSentinelLastSeen(_ context.Context, name string, timestamp float64) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -194,7 +194,7 @@ func (m *MemoryStore) UpdateSentinelLastSeen(_ context.Context, name string, tim
 	return nil
 }
 
-// RegisterCluster registers a cluster using master_name as the unique key.
+// RegisterCluster는 master_name을 고유 키로 사용하여 클러스터를 등록한다.
 func (m *MemoryStore) RegisterCluster(_ context.Context, c *models.Cluster) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -203,7 +203,7 @@ func (m *MemoryStore) RegisterCluster(_ context.Context, c *models.Cluster) erro
 	return nil
 }
 
-// UnregisterCluster removes a cluster by master name.
+// UnregisterCluster는 master_name으로 클러스터를 제거한다.
 func (m *MemoryStore) UnregisterCluster(_ context.Context, masterName string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -215,7 +215,7 @@ func (m *MemoryStore) UnregisterCluster(_ context.Context, masterName string) (b
 	return false, nil
 }
 
-// GetCluster returns a cluster by master name.
+// GetCluster는 master_name으로 클러스터를 조회한다.
 func (m *MemoryStore) GetCluster(_ context.Context, masterName string) (*models.Cluster, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -227,7 +227,7 @@ func (m *MemoryStore) GetCluster(_ context.Context, masterName string) (*models.
 	return c, nil
 }
 
-// ListClusters returns all registered clusters.
+// ListClusters는 등록된 모든 클러스터를 반환한다.
 func (m *MemoryStore) ListClusters(_ context.Context) ([]*models.Cluster, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -239,14 +239,14 @@ func (m *MemoryStore) ListClusters(_ context.Context) ([]*models.Cluster, error)
 	return result, nil
 }
 
-// GetAdminPasswordHash returns the stored admin password hash.
+// GetAdminPasswordHash는 저장된 관리자 비밀번호 해시를 반환한다.
 func (m *MemoryStore) GetAdminPasswordHash(_ context.Context) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.adminPwHash, nil
 }
 
-// SetAdminPasswordHash stores the admin password hash.
+// SetAdminPasswordHash는 관리자 비밀번호 해시를 저장한다.
 func (m *MemoryStore) SetAdminPasswordHash(_ context.Context, hash string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -254,14 +254,14 @@ func (m *MemoryStore) SetAdminPasswordHash(_ context.Context, hash string) error
 	return nil
 }
 
-// GetAPIToken returns the stored API token.
+// GetAPIToken은 저장된 API 토큰을 반환한다.
 func (m *MemoryStore) GetAPIToken(_ context.Context) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.apiToken, nil
 }
 
-// SetAPIToken stores the API token.
+// SetAPIToken은 API 토큰을 저장한다.
 func (m *MemoryStore) SetAPIToken(_ context.Context, token string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -269,7 +269,7 @@ func (m *MemoryStore) SetAPIToken(_ context.Context, token string) error {
 	return nil
 }
 
-// DeleteAPIToken removes the API token.
+// DeleteAPIToken은 API 토큰을 삭제한다.
 func (m *MemoryStore) DeleteAPIToken(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -277,14 +277,14 @@ func (m *MemoryStore) DeleteAPIToken(_ context.Context) error {
 	return nil
 }
 
-// GetSlackWebhookURL returns the stored Slack webhook URL.
+// GetSlackWebhookURL은 저장된 Slack 웹훅 URL을 반환한다.
 func (m *MemoryStore) GetSlackWebhookURL(_ context.Context) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.slackWebhook, nil
 }
 
-// SetSlackWebhookURL stores the Slack webhook URL.
+// SetSlackWebhookURL은 Slack 웹훅 URL을 저장한다.
 func (m *MemoryStore) SetSlackWebhookURL(_ context.Context, url string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -292,7 +292,7 @@ func (m *MemoryStore) SetSlackWebhookURL(_ context.Context, url string) error {
 	return nil
 }
 
-// DeleteSlackWebhookURL removes the Slack webhook URL.
+// DeleteSlackWebhookURL은 Slack 웹훅 URL을 삭제한다.
 func (m *MemoryStore) DeleteSlackWebhookURL(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -300,14 +300,14 @@ func (m *MemoryStore) DeleteSlackWebhookURL(_ context.Context) error {
 	return nil
 }
 
-// GetSlackChannel returns the stored Slack channel.
+// GetSlackChannel은 저장된 Slack 채널 이름을 반환한다.
 func (m *MemoryStore) GetSlackChannel(_ context.Context) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.slackChannel, nil
 }
 
-// SetSlackChannel stores the Slack channel name.
+// SetSlackChannel은 Slack 채널 이름을 저장한다.
 func (m *MemoryStore) SetSlackChannel(_ context.Context, channel string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -315,7 +315,7 @@ func (m *MemoryStore) SetSlackChannel(_ context.Context, channel string) error {
 	return nil
 }
 
-// GetRuntimeSettings returns the stored runtime settings.
+// GetRuntimeSettings는 저장된 런타임 설정을 반환한다.
 func (m *MemoryStore) GetRuntimeSettings(_ context.Context) (map[string]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -327,7 +327,7 @@ func (m *MemoryStore) GetRuntimeSettings(_ context.Context) (map[string]string, 
 	return result, nil
 }
 
-// SaveRuntimeSettings replaces all runtime settings.
+// SaveRuntimeSettings는 런타임 설정 전체를 교체하여 저장한다.
 func (m *MemoryStore) SaveRuntimeSettings(_ context.Context, settings map[string]string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -339,7 +339,7 @@ func (m *MemoryStore) SaveRuntimeSettings(_ context.Context, settings map[string
 	return nil
 }
 
-// SaveDNSProviderConfig stores a DNS provider configuration.
+// SaveDNSProviderConfig는 DNS 공급자 설정을 저장한다.
 func (m *MemoryStore) SaveDNSProviderConfig(_ context.Context, name string, cfg map[string]string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -352,7 +352,7 @@ func (m *MemoryStore) SaveDNSProviderConfig(_ context.Context, name string, cfg 
 	return nil
 }
 
-// GetDNSProviderConfig returns the configuration for a DNS provider.
+// GetDNSProviderConfig는 지정한 DNS 공급자의 설정을 반환한다.
 func (m *MemoryStore) GetDNSProviderConfig(_ context.Context, name string) (map[string]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -364,7 +364,7 @@ func (m *MemoryStore) GetDNSProviderConfig(_ context.Context, name string) (map[
 	return cfg, nil
 }
 
-// ListDNSProviderConfigs returns all DNS provider configurations.
+// ListDNSProviderConfigs는 모든 DNS 공급자 설정을 반환한다.
 func (m *MemoryStore) ListDNSProviderConfigs(_ context.Context) (map[string]map[string]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -380,7 +380,7 @@ func (m *MemoryStore) ListDNSProviderConfigs(_ context.Context) (map[string]map[
 	return result, nil
 }
 
-// DeleteDNSProviderConfig removes a DNS provider configuration.
+// DeleteDNSProviderConfig는 지정한 DNS 공급자 설정을 삭제한다.
 func (m *MemoryStore) DeleteDNSProviderConfig(_ context.Context, name string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -392,7 +392,7 @@ func (m *MemoryStore) DeleteDNSProviderConfig(_ context.Context, name string) (b
 	return false, nil
 }
 
-// Close is a no-op for the in-memory store.
+// Close는 인메모리 저장소에서는 아무 동작도 하지 않는다.
 func (m *MemoryStore) Close() error {
 	return nil
 }

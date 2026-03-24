@@ -1,4 +1,4 @@
-// Package config provides application configuration loaded from config.yaml and environment variables.
+// Package config는 config.yaml 파일과 환경 변수로부터 애플리케이션 설정을 로드하는 기능을 제공한다.
 package config
 
 import (
@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config holds all Sentinel Manager server settings.
+// Config는 Sentinel Manager 서버의 전체 설정을 담는 구조체이다.
 type Config struct {
 	// Server
 	Host         string `yaml:"host"`
@@ -44,8 +44,8 @@ type Config struct {
 	EncryptionKey string `yaml:"encryption_key"`
 }
 
-// Load reads configuration from the given YAML file, then applies environment variable overrides.
-// If encryption_key is empty, a new key is generated and written back to the YAML file.
+// Load는 지정된 YAML 설정 파일을 읽고 환경 변수 오버라이드를 적용하여 Config를 반환한다.
+// encryption_key가 비어 있으면 새 키를 자동 생성하고 YAML 파일에 다시 저장한다.
 func Load(configFile string) *Config {
 	cfg := defaults()
 
@@ -173,7 +173,7 @@ func applyEnvOverrides(cfg *Config) {
 	}
 }
 
-// writeBackEncryptionKey appends or updates the encryption_key in the YAML config file.
+// writeBackEncryptionKey는 YAML 설정 파일에 encryption_key를 추가하거나 갱신한다.
 func writeBackEncryptionKey(path, key string) {
 	// Read existing file, re-parse, set key, write back.
 	data, err := os.ReadFile(path)
@@ -204,7 +204,7 @@ func writeBackEncryptionKey(path, key string) {
 	}
 }
 
-// Addr returns the listen address in "host:port" format.
+// Addr는 서버 리슨 주소를 "host:port" 형식으로 반환한다.
 func (c *Config) Addr() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }

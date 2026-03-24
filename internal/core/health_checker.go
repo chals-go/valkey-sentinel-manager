@@ -11,8 +11,8 @@ import (
 	"github.com/chals-go/valkey-sentinel-manager/internal/store"
 )
 
-// SentinelHealthChecker pings all registered sentinel nodes in the background
-// and maintains a map of node connection statuses.
+// SentinelHealthChecker는 등록된 모든 센티널 노드를 백그라운드에서 주기적으로 핑하고
+// 노드 연결 상태를 맵으로 유지 관리하는 구조체이다.
 type SentinelHealthChecker struct {
 	store     store.Store
 	mu        sync.RWMutex
@@ -22,7 +22,7 @@ type SentinelHealthChecker struct {
 	wg        sync.WaitGroup
 }
 
-// NewSentinelHealthChecker creates a health checker.
+// NewSentinelHealthChecker는 SentinelHealthChecker를 생성하여 반환한다.
 func NewSentinelHealthChecker(s store.Store) *SentinelHealthChecker {
 	return &SentinelHealthChecker{
 		store:     s,
@@ -31,7 +31,7 @@ func NewSentinelHealthChecker(s store.Store) *SentinelHealthChecker {
 	}
 }
 
-// Start launches the background health check goroutine.
+// Start는 백그라운드 헬스체크 고루틴을 시작한다.
 func (hc *SentinelHealthChecker) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 	hc.cancel = cancel
@@ -40,7 +40,7 @@ func (hc *SentinelHealthChecker) Start() {
 	slog.Info("sentinel health checker started")
 }
 
-// Stop cancels the background goroutine and waits for it to finish.
+// Stop은 백그라운드 고루틴을 취소하고 종료될 때까지 대기한다.
 func (hc *SentinelHealthChecker) Stop() {
 	if hc.cancel != nil {
 		hc.cancel()
@@ -49,7 +49,7 @@ func (hc *SentinelHealthChecker) Stop() {
 	slog.Info("sentinel health checker stopped")
 }
 
-// GetAllStatuses returns a copy of the current statuses map.
+// GetAllStatuses는 현재 노드 연결 상태 맵의 복사본을 반환한다.
 func (hc *SentinelHealthChecker) GetAllStatuses() map[string]bool {
 	hc.mu.RLock()
 	defer hc.mu.RUnlock()
@@ -60,7 +60,7 @@ func (hc *SentinelHealthChecker) GetAllStatuses() map[string]bool {
 	return result
 }
 
-// GetStatus returns the connection status and existence for a node.
+// GetStatus는 특정 노드의 연결 상태와 존재 여부를 반환한다.
 func (hc *SentinelHealthChecker) GetStatus(nodeName string) (connected bool, exists bool) {
 	hc.mu.RLock()
 	defer hc.mu.RUnlock()

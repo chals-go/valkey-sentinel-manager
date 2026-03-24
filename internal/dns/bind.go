@@ -12,14 +12,15 @@ import (
 	"time"
 )
 
-// BINDProvider manages DNS records via a BIND REST API.
+// BINDProvider는 BIND REST API를 통해 DNS 레코드를 관리하는 프로바이더이다.
 type BINDProvider struct {
 	apiURL string
 	apiKey string
 	client *http.Client
 }
 
-// NewBINDProvider creates a BIND DNS provider.
+// NewBINDProvider는 BIND DNS 프로바이더를 생성한다.
+// apiKey가 비어 있으면 인증 헤더를 설정하지 않는다.
 func NewBINDProvider(apiURL, apiKey string) *BINDProvider {
 	return &BINDProvider{
 		apiURL: strings.TrimRight(apiURL, "/"),
@@ -63,6 +64,7 @@ func (p *BINDProvider) doRequest(ctx context.Context, method, url string, body a
 	return p.client.Do(req)
 }
 
+// UpdateRecord는 BIND REST API를 통해 단일 값 DNS 레코드를 업데이트한다.
 func (p *BINDProvider) UpdateRecord(ctx context.Context, zone, name, recordType, value string, ttl int) error {
 	resp, err := p.doRequest(ctx, http.MethodPut, p.recordURL(zone, name, recordType), map[string]any{
 		"value": value,
@@ -79,6 +81,8 @@ func (p *BINDProvider) UpdateRecord(ctx context.Context, zone, name, recordType,
 	return nil
 }
 
+// UpdateRecordValues는 BIND REST API를 통해 다중 값 DNS 레코드의 모든 값을 교체한다.
+// values가 비어 있으면 기존 레코드를 유지한다.
 func (p *BINDProvider) UpdateRecordValues(ctx context.Context, zone, name, recordType string, values []string, ttl int) error {
 	if len(values) == 0 {
 		slog.Warn("empty values, keeping record", "record", name+"."+zone)
@@ -103,6 +107,7 @@ func (p *BINDProvider) UpdateRecordValues(ctx context.Context, zone, name, recor
 	return nil
 }
 
+// AddRecordValue는 BIND REST API를 통해 다중 값 DNS 레코드에 값을 추가한다.
 func (p *BINDProvider) AddRecordValue(ctx context.Context, zone, name, recordType, value string, ttl int) error {
 	resp, err := p.doRequest(ctx, http.MethodPost, p.recordURL(zone, name, recordType), map[string]any{
 		"value": value,
@@ -119,6 +124,7 @@ func (p *BINDProvider) AddRecordValue(ctx context.Context, zone, name, recordTyp
 	return nil
 }
 
+// RemoveRecordValue는 BIND REST API를 통해 다중 값 DNS 레코드에서 특정 값을 제거한다.
 func (p *BINDProvider) RemoveRecordValue(ctx context.Context, zone, name, recordType, value string) error {
 	url := p.recordURL(zone, name, recordType) + "?value=" + value
 	resp, err := p.doRequest(ctx, http.MethodDelete, url, nil)
@@ -133,6 +139,7 @@ func (p *BINDProvider) RemoveRecordValue(ctx context.Context, zone, name, record
 	return nil
 }
 
+// DeleteRecord는 BIND REST API를 통해 DNS 레코드 전체를 삭제한다.
 func (p *BINDProvider) DeleteRecord(ctx context.Context, zone, name, recordType string) error {
 	resp, err := p.doRequest(ctx, http.MethodDelete, p.recordURL(zone, name, recordType), nil)
 	if err != nil {
@@ -145,6 +152,7 @@ func (p *BINDProvider) DeleteRecord(ctx context.Context, zone, name, recordType 
 	return nil
 }
 
+// VerifyRecord는 BIND REST API를 통해 DNS 레코드가 기대하는 값을 가지고 있는지 확인한다.
 func (p *BINDProvider) VerifyRecord(ctx context.Context, zone, name, expectedValue string) (bool, error) {
 	resp, err := p.doRequest(ctx, http.MethodGet, p.recordURL(zone, name, ""), nil)
 	if err != nil {
@@ -173,6 +181,7 @@ func (p *BINDProvider) VerifyRecord(ctx context.Context, zone, name, expectedVal
 	return false, nil
 }
 
+// HealthCheck는 BIND REST API의 /health 엔드포인트를 통해 연결 상태를 확인한다.
 func (p *BINDProvider) HealthCheck(ctx context.Context) error {
 	resp, err := p.doRequest(ctx, http.MethodGet, p.apiURL+"/health", nil)
 	if err != nil {

@@ -5,9 +5,9 @@ import (
 	"strconv"
 )
 
-// CmdReconfig handles the client-reconfig-script subcommand.
-// Args: <master-name> <role> <state> <from-ip> <from-port> <to-ip> <to-port>
-// Exit codes: 0=success, 1=send failed (retry), 2=config error (no retry).
+// CmdReconfig는 client-reconfig-script 서브커맨드를 처리한다.
+// args 형식: <master-name> <role> <state> <from-ip> <from-port> <to-ip> <to-port>
+// 종료 코드: 0=성공, 1=전송 실패(재시도 가능), 2=설정 오류(재시도 불가).
 func CmdReconfig(args []string) int {
 	if len(args) < 7 {
 		log.Printf("[ERROR] not enough args: need 7 (master-name role state from-ip from-port to-ip to-port), got %d: %v", len(args), args)

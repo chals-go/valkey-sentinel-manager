@@ -6,9 +6,9 @@ import (
 	"strings"
 )
 
-// parseSdownDescription parses "+sdown/-sdown" event descriptions.
-// Format: "slave <ip>:<port> <ip> <port> @ <master-name> <master-ip> <master-port>"
-// Returns nil if not a slave event.
+// parseSdownDescription은 "+sdown/-sdown" 이벤트 설명 문자열을 파싱한다.
+// 형식: "slave <ip>:<port> <ip> <port> @ <master-name> <master-ip> <master-port>"
+// slave 이벤트가 아닌 경우 nil을 반환한다.
 func parseSdownDescription(description string) map[string]any {
 	parts := strings.Fields(description)
 	if len(parts) < 5 || parts[0] != "slave" {
@@ -45,10 +45,10 @@ func parseSdownDescription(description string) map[string]any {
 	}
 }
 
-// CmdNotify handles the notification-script subcommand.
-// Args: <event-type> <event-description...>
-// Only +sdown/-sdown slave events are forwarded. Others are logged and ignored.
-// Exit codes: 0=success or ignored, 1=send failed.
+// CmdNotify는 notification-script 서브커맨드를 처리한다.
+// args 형식: <event-type> <event-description...>
+// +sdown/-sdown slave 이벤트만 Monitor 서버로 전달하며, 그 외 이벤트는 로그만 남기고 무시한다.
+// 종료 코드: 0=성공 또는 무시, 1=전송 실패.
 func CmdNotify(args []string) int {
 	if len(args) < 2 {
 		log.Printf("[WARN] not enough args: need at least 2 (event-type event-description)")

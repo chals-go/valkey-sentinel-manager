@@ -11,7 +11,7 @@ import (
 
 const encPrefix = "enc:"
 
-// SensitiveFields are DNS provider config fields that should be encrypted.
+// SensitiveFields는 암호화 대상인 DNS 프로바이더 설정 필드 목록이다.
 var SensitiveFields = map[string]bool{
 	"access_key":    true,
 	"secret_key":    true,
@@ -19,13 +19,13 @@ var SensitiveFields = map[string]bool{
 	"api_key":       true,
 }
 
-// Encryptor handles AES-256-GCM encryption/decryption of sensitive values.
+// Encryptor는 AES-256-GCM 방식으로 민감한 값의 암호화와 복호화를 처리하는 구조체다.
 type Encryptor struct {
 	key []byte // 32 bytes
 }
 
-// NewEncryptor creates an Encryptor from a base64-encoded key.
-// If keyB64 is empty, a random key is generated (data won't survive restart).
+// NewEncryptor는 base64로 인코딩된 키로 Encryptor를 생성한다.
+// keyB64가 비어있으면 임시 무작위 키를 생성하며, 이 경우 재시작 후 데이터 복호화가 불가능하다.
 func NewEncryptor(keyB64 string) *Encryptor {
 	if keyB64 != "" {
 		key, err := base64.StdEncoding.DecodeString(keyB64)
@@ -43,7 +43,7 @@ func NewEncryptor(keyB64 string) *Encryptor {
 	return &Encryptor{key: key}
 }
 
-// Encrypt encrypts a plaintext string using AES-256-GCM.
+// Encrypt는 평문 문자열을 AES-256-GCM 방식으로 암호화하여 반환한다.
 func (e *Encryptor) Encrypt(plaintext string) string {
 	if plaintext == "" || strings.HasPrefix(plaintext, encPrefix) {
 		return plaintext
@@ -67,7 +67,7 @@ func (e *Encryptor) Encrypt(plaintext string) string {
 	return encPrefix + base64.StdEncoding.EncodeToString(ciphertext)
 }
 
-// Decrypt decrypts an AES-256-GCM encrypted string.
+// Decrypt는 AES-256-GCM으로 암호화된 문자열을 복호화하여 반환한다.
 func (e *Encryptor) Decrypt(encrypted string) string {
 	if encrypted == "" || !strings.HasPrefix(encrypted, encPrefix) {
 		return encrypted
@@ -97,7 +97,7 @@ func (e *Encryptor) Decrypt(encrypted string) string {
 	return string(plaintext)
 }
 
-// EncryptSensitiveFields encrypts sensitive fields in a config map.
+// EncryptSensitiveFields는 설정 맵에서 SensitiveFields에 해당하는 필드를 암호화하여 새 맵으로 반환한다.
 func (e *Encryptor) EncryptSensitiveFields(cfg map[string]string) map[string]string {
 	result := make(map[string]string, len(cfg))
 	for k, v := range cfg {
@@ -110,7 +110,7 @@ func (e *Encryptor) EncryptSensitiveFields(cfg map[string]string) map[string]str
 	return result
 }
 
-// DecryptSensitiveFields decrypts sensitive fields in a config map.
+// DecryptSensitiveFields는 설정 맵에서 SensitiveFields에 해당하는 필드를 복호화하여 새 맵으로 반환한다.
 func (e *Encryptor) DecryptSensitiveFields(cfg map[string]string) map[string]string {
 	result := make(map[string]string, len(cfg))
 	for k, v := range cfg {

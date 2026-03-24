@@ -13,13 +13,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53/types"
 )
 
-// Route53Provider manages DNS records via AWS Route53.
+// Route53Provider는 AWS Route53을 통해 DNS 레코드를 관리하는 프로바이더이다.
 type Route53Provider struct {
 	client *route53.Client
 	zoneID string
 }
 
-// NewRoute53Provider creates a Route53 DNS provider.
+// NewRoute53Provider는 Route53 DNS 프로바이더를 생성한다.
+// region, accessKey, secretKey가 비어 있으면 AWS 기본 자격 증명 체인을 사용한다.
 func NewRoute53Provider(ctx context.Context, zoneID, region, accessKey, secretKey string) (*Route53Provider, error) {
 	var opts []func(*awsconfig.LoadOptions) error
 	if region != "" {
@@ -97,6 +98,7 @@ func (p *Route53Provider) getRecords(ctx context.Context, zone, name, recordType
 	return nil, 0, nil
 }
 
+// UpdateRecord는 단일 값 DNS 레코드를 Route53에 업서트한다.
 func (p *Route53Provider) UpdateRecord(ctx context.Context, zone, name, recordType, value string, ttl int) error {
 	if err := p.upsert(ctx, zone, name, recordType, []string{value}, ttl); err != nil {
 		return fmt.Errorf("route53 update record: %w", err)
@@ -105,6 +107,8 @@ func (p *Route53Provider) UpdateRecord(ctx context.Context, zone, name, recordTy
 	return nil
 }
 
+// UpdateRecordValues는 다중 값 DNS 레코드의 모든 값을 Route53에서 교체한다.
+// values가 비어 있으면 기존 레코드를 유지한다.
 func (p *Route53Provider) UpdateRecordValues(ctx context.Context, zone, name, recordType string, values []string, ttl int) error {
 	if len(values) == 0 {
 		slog.Warn("empty values, keeping record", "record", name+"."+zone)
@@ -117,6 +121,8 @@ func (p *Route53Provider) UpdateRecordValues(ctx context.Context, zone, name, re
 	return nil
 }
 
+// AddRecordValue는 Route53의 다중 값 DNS 레코드에 값을 추가한다.
+// 이미 존재하는 값이면 무시한다.
 func (p *Route53Provider) AddRecordValue(ctx context.Context, zone, name, recordType, value string, ttl int) error {
 	existing, currentTTL, err := p.getRecords(ctx, zone, name, recordType)
 	if err != nil {
@@ -135,6 +141,8 @@ func (p *Route53Provider) AddRecordValue(ctx context.Context, zone, name, record
 	return p.upsert(ctx, zone, name, recordType, existing, ttl)
 }
 
+// RemoveRecordValue는 Route53의 다중 값 DNS 레코드에서 특정 값을 제거한다.
+// 마지막 남은 값이라면 오류를 반환한다.
 func (p *Route53Provider) RemoveRecordValue(ctx context.Context, zone, name, recordType, value string) error {
 	existing, currentTTL, err := p.getRecords(ctx, zone, name, recordType)
 	if err != nil {
@@ -163,6 +171,8 @@ func (p *Route53Provider) RemoveRecordValue(ctx context.Context, zone, name, rec
 	return p.upsert(ctx, zone, name, recordType, newVals, ttl)
 }
 
+// DeleteRecord는 Route53에서 DNS 레코드 전체를 삭제한다.
+// 레코드가 존재하지 않으면 오류 없이 반환한다.
 func (p *Route53Provider) DeleteRecord(ctx context.Context, zone, name, recordType string) error {
 	existing, ttl, err := p.getRecords(ctx, zone, name, recordType)
 	if err != nil {
@@ -192,6 +202,7 @@ func (p *Route53Provider) DeleteRecord(ctx context.Context, zone, name, recordTy
 	return err
 }
 
+// VerifyRecord는 Route53에서 A 레코드가 기대하는 값을 가지고 있는지 확인한다.
 func (p *Route53Provider) VerifyRecord(ctx context.Context, zone, name, expectedValue string) (bool, error) {
 	vals, _, err := p.getRecords(ctx, zone, name, "A")
 	if err != nil {
@@ -205,6 +216,7 @@ func (p *Route53Provider) VerifyRecord(ctx context.Context, zone, name, expected
 	return false, nil
 }
 
+// HealthCheck는 Route53의 호스팅 존 조회를 통해 연결 상태를 확인한다.
 func (p *Route53Provider) HealthCheck(ctx context.Context) error {
 	_, err := p.client.GetHostedZone(ctx, &route53.GetHostedZoneInput{
 		Id: aws.String(p.zoneID),

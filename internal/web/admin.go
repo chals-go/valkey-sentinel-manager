@@ -18,7 +18,7 @@ import (
 	"github.com/chals-go/valkey-sentinel-manager/internal/store"
 )
 
-// AdminHandler holds dependencies for the admin web UI.
+// AdminHandler는 관리자 웹 UI 핸들러의 의존성을 보관하는 구조체다.
 type AdminHandler struct {
 	store        store.Store
 	session      *SessionManager
@@ -29,12 +29,12 @@ type AdminHandler struct {
 	healthCheck  *core.SentinelHealthChecker
 }
 
-// NewAdminHandler creates an AdminHandler.
+// NewAdminHandler는 AdminHandler를 생성하여 반환한다.
 func NewAdminHandler(s store.Store, sm *SessionManager, tmpl *template.Template, lang string, providers map[string]dns.Provider, enc *Encryptor, hc *core.SentinelHealthChecker) *AdminHandler {
 	return &AdminHandler{store: s, session: sm, tmpl: tmpl, lang: lang, dnsProviders: providers, encryptor: enc, healthCheck: hc}
 }
 
-// PageData is the common template data structure.
+// PageData는 템플릿 렌더링에 공통으로 사용되는 데이터 구조체다.
 type PageData struct {
 	Page         string
 	HideSidebar  bool
@@ -67,7 +67,7 @@ func (h *AdminHandler) redirect(w http.ResponseWriter, r *http.Request, url stri
 	http.Redirect(w, r, url, http.StatusSeeOther)
 }
 
-// RegisterRoutes registers all admin web routes on the given mux.
+// RegisterRoutes는 관리자 웹 UI의 모든 라우트를 주어진 ServeMux에 등록한다.
 func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	// Login (no auth required).
 	mux.HandleFunc("GET /admin/login", h.LoginPage)
@@ -127,6 +127,7 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 
 // === Login / Logout ===
 
+// LoginPage는 로그인 페이지를 렌더링한다. 이미 인증된 경우 대시보드로 리다이렉트한다.
 func (h *AdminHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	if h.session.ValidateSession(r) {
 		h.redirect(w, r, "/admin/")
@@ -135,6 +136,7 @@ func (h *AdminHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	h.render(w, "base", PageData{Page: "login", HideSidebar: true})
 }
 
+// LoginSubmit은 로그인 폼 제출을 처리하고, 인증 성공 시 세션을 생성하여 대시보드로 리다이렉트한다.
 func (h *AdminHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	ip := r.RemoteAddr
 	if h.session.IsLoginLocked(ip) {
@@ -168,6 +170,7 @@ func (h *AdminHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	h.redirect(w, r, "/admin/")
 }
 
+// Logout은 현재 세션을 종료하고 쿠키를 삭제한 후 로그인 페이지로 리다이렉트한다.
 func (h *AdminHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	h.session.DestroySession(r)
 	h.session.ClearSessionCookie(w)
@@ -176,6 +179,7 @@ func (h *AdminHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 // === Dashboard ===
 
+// Dashboard는 시스템 개요가 포함된 메인 대시보드 페이지를 렌더링한다.
 func (h *AdminHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -298,6 +302,7 @@ func (h *AdminHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 // === Clusters ===
 
+// Clusters는 등록된 Replication Group 목록 페이지를 렌더링한다.
 func (h *AdminHandler) Clusters(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	clusters, storeErr := h.store.ListClusters(ctx)
@@ -399,6 +404,7 @@ func (h *AdminHandler) Clusters(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ClusterFormPage는 새 Replication Group 등록 폼 페이지를 렌더링한다.
 func (h *AdminHandler) ClusterFormPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sentinels, storeErr := h.store.ListSentinels(ctx, "")
@@ -422,6 +428,7 @@ func (h *AdminHandler) ClusterFormPage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ClusterEditPage는 기존 Replication Group 수정 폼 페이지를 렌더링한다.
 func (h *AdminHandler) ClusterEditPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	masterName := r.PathValue("masterName")
@@ -458,6 +465,7 @@ func (h *AdminHandler) ClusterEditPage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ClusterCreate는 새 Replication Group 등록 요청을 처리하고, Sentinel 모니터링과 DNS 레코드를 생성한다.
 func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	r.ParseForm()
@@ -556,6 +564,7 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	h.redirect(w, r, "/admin/clusters")
 }
 
+// ClusterEditSubmit은 Replication Group 수정 폼 제출을 처리하고 DNS TTL 및 Sentinel 설정을 업데이트한다.
 func (h *AdminHandler) ClusterEditSubmit(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	masterName := r.PathValue("masterName")
@@ -591,6 +600,7 @@ func (h *AdminHandler) ClusterEditSubmit(w http.ResponseWriter, r *http.Request)
 	h.redirect(w, r, "/admin/clusters")
 }
 
+// ClusterDelete는 Replication Group 삭제 요청을 처리하고, Sentinel 모니터링과 DNS 레코드를 제거한다.
 func (h *AdminHandler) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	masterName := r.PathValue("masterName")
@@ -610,6 +620,7 @@ func (h *AdminHandler) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 	h.redirect(w, r, "/admin/clusters")
 }
 
+// ClusterPause는 Replication Group 모니터링을 일시정지하고, Sentinel의 down-after-milliseconds를 2시간으로 설정한다.
 func (h *AdminHandler) ClusterPause(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	masterName := r.PathValue("masterName")
@@ -635,6 +646,7 @@ func (h *AdminHandler) ClusterPause(w http.ResponseWriter, r *http.Request) {
 	h.redirect(w, r, "/admin/clusters")
 }
 
+// ClusterResume은 일시정지된 Replication Group 모니터링을 재개하고, Sentinel 설정을 원래 값으로 복원한다.
 func (h *AdminHandler) ClusterResume(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	masterName := r.PathValue("masterName")
@@ -657,6 +669,7 @@ func (h *AdminHandler) ClusterResume(w http.ResponseWriter, r *http.Request) {
 	h.redirect(w, r, "/admin/clusters")
 }
 
+// ClusterTestFailover는 특정 Replication Group에 대해 SENTINEL FAILOVER 명령을 실행하여 수동 페일오버를 트리거한다.
 func (h *AdminHandler) ClusterTestFailover(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	masterName := r.PathValue("masterName")
@@ -671,6 +684,7 @@ func (h *AdminHandler) ClusterTestFailover(w http.ResponseWriter, r *http.Reques
 	h.redirect(w, r, "/admin/clusters")
 }
 
+// ClusterSyncDNS는 Sentinel에서 현재 Primary/Replica IP를 조회하여 DNS 레코드를 강제로 동기화한다.
 func (h *AdminHandler) ClusterSyncDNS(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	masterName := r.PathValue("masterName")
@@ -712,6 +726,7 @@ func (h *AdminHandler) ClusterSyncDNS(w http.ResponseWriter, r *http.Request) {
 
 // === Sentinels ===
 
+// Sentinels는 등록된 Sentinel Cluster 목록과 노드별 상태를 렌더링한다.
 func (h *AdminHandler) Sentinels(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sentinels, storeErr := h.store.ListSentinels(ctx, "")
@@ -743,6 +758,7 @@ func (h *AdminHandler) Sentinels(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// SentinelClusterCreate는 새 Sentinel Cluster와 노드 목록을 등록하는 요청을 처리한다.
 func (h *AdminHandler) SentinelClusterCreate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	r.ParseForm()
@@ -772,6 +788,7 @@ func (h *AdminHandler) SentinelClusterCreate(w http.ResponseWriter, r *http.Requ
 	h.redirect(w, r, "/admin/sentinels")
 }
 
+// SentinelClusterDelete는 특정 Sentinel 그룹에 속한 모든 노드를 삭제하는 요청을 처리한다.
 func (h *AdminHandler) SentinelClusterDelete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	grpName := r.PathValue("grpName")
@@ -783,6 +800,7 @@ func (h *AdminHandler) SentinelClusterDelete(w http.ResponseWriter, r *http.Requ
 	h.redirect(w, r, "/admin/sentinels")
 }
 
+// SentinelAddNode는 기존 Sentinel 그룹에 새 노드를 추가하는 요청을 처리한다.
 func (h *AdminHandler) SentinelAddNode(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	grpName := r.PathValue("grpName")
@@ -802,12 +820,14 @@ func (h *AdminHandler) SentinelAddNode(w http.ResponseWriter, r *http.Request) {
 	h.redirect(w, r, "/admin/sentinels")
 }
 
+// SentinelDeleteNode는 특정 Sentinel 노드를 삭제하는 요청을 처리한다.
 func (h *AdminHandler) SentinelDeleteNode(w http.ResponseWriter, r *http.Request) {
 	nodeName := r.PathValue("nodeName")
 	h.store.UnregisterSentinel(r.Context(), nodeName)
 	h.redirect(w, r, "/admin/sentinels")
 }
 
+// SentinelClusterEditSubmit은 Sentinel Cluster 수정 폼 제출을 처리하고 노드 정보와 알림 설정을 업데이트한다.
 func (h *AdminHandler) SentinelClusterEditSubmit(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	grpName := r.PathValue("grpName")
@@ -853,6 +873,7 @@ func (h *AdminHandler) SentinelClusterEditSubmit(w http.ResponseWriter, r *http.
 	h.redirect(w, r, "/admin/sentinels")
 }
 
+// SentinelToggleAlert는 특정 Sentinel 그룹의 다운 알림 ON/OFF를 전환하는 요청을 처리한다.
 func (h *AdminHandler) SentinelToggleAlert(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	grpName := r.PathValue("grpName")
@@ -875,6 +896,7 @@ func (h *AdminHandler) SentinelToggleAlert(w http.ResponseWriter, r *http.Reques
 
 // === Events ===
 
+// Events는 페일오버 이벤트 로그 페이지를 렌더링한다. 타입 필터와 키워드 검색을 지원한다.
 func (h *AdminHandler) Events(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	allEvents, storeErr := h.store.GetRecentEvents(ctx, 5000)
@@ -944,6 +966,7 @@ func (h *AdminHandler) Events(w http.ResponseWriter, r *http.Request) {
 
 // === Settings: Server ===
 
+// SettingsServer는 서버 설정 페이지를 렌더링한다. 저장소 연결 상태와 런타임 설정을 표시한다.
 func (h *AdminHandler) SettingsServer(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	rt, storeErr := h.store.GetRuntimeSettings(ctx)
@@ -979,6 +1002,7 @@ func (h *AdminHandler) SettingsServer(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// SettingsServerSave는 서버 런타임 설정 저장 요청을 처리하고 언어 설정을 즉시 반영한다.
 func (h *AdminHandler) SettingsServerSave(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	r.ParseForm()
@@ -1005,6 +1029,7 @@ func (h *AdminHandler) SettingsServerSave(w http.ResponseWriter, r *http.Request
 
 // === Settings: DNS ===
 
+// SettingsDNS는 DNS 프로바이더 설정 페이지를 렌더링한다. 등록된 프로바이더 목록과 연결 상태를 표시한다.
 func (h *AdminHandler) SettingsDNS(w http.ResponseWriter, r *http.Request) {
 	configs, storeErr := h.store.ListDNSProviderConfigs(r.Context())
 	if storeErr != nil { slog.Warn("store error", "method", "ListDNSProviderConfigs", "error", storeErr) }
@@ -1021,6 +1046,7 @@ func (h *AdminHandler) SettingsDNS(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// DNSProviderCreate는 새 DNS 프로바이더 등록 요청을 처리하고 민감한 필드를 암호화하여 저장한다.
 func (h *AdminHandler) DNSProviderCreate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	r.ParseForm()
@@ -1081,6 +1107,7 @@ func (h *AdminHandler) DNSProviderCreate(w http.ResponseWriter, r *http.Request)
 	h.redirect(w, r, "/admin/settings/dns")
 }
 
+// DNSProviderEditPage는 DNS 프로바이더 수정 폼 페이지를 렌더링한다.
 func (h *AdminHandler) DNSProviderEditPage(w http.ResponseWriter, r *http.Request) {
 	providerName := r.PathValue("providerName")
 	cfg, err := h.store.GetDNSProviderConfig(r.Context(), providerName)
@@ -1104,6 +1131,7 @@ func (h *AdminHandler) DNSProviderEditPage(w http.ResponseWriter, r *http.Reques
 	})
 }
 
+// DNSProviderEditSubmit은 DNS 프로바이더 수정 폼 제출을 처리하고 설정을 암호화하여 저장한다.
 func (h *AdminHandler) DNSProviderEditSubmit(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	providerName := r.PathValue("providerName")
@@ -1144,6 +1172,7 @@ func (h *AdminHandler) DNSProviderEditSubmit(w http.ResponseWriter, r *http.Requ
 	h.redirect(w, r, "/admin/settings/dns")
 }
 
+// DNSProviderDelete는 DNS 프로바이더 삭제 요청을 처리하고 인메모리 프로바이더 인스턴스도 제거한다.
 func (h *AdminHandler) DNSProviderDelete(w http.ResponseWriter, r *http.Request) {
 	providerName := r.PathValue("providerName")
 	h.store.DeleteDNSProviderConfig(r.Context(), providerName)
@@ -1191,6 +1220,7 @@ func (h *AdminHandler) saveAPITokens(ctx context.Context, tokens map[string]stri
 	}
 }
 
+// SettingsToken은 API 토큰 관리 페이지를 렌더링한다.
 func (h *AdminHandler) SettingsToken(w http.ResponseWriter, r *http.Request) {
 	tokens := h.getAPITokens(r.Context())
 	h.render(w, "base", PageData{
@@ -1199,6 +1229,7 @@ func (h *AdminHandler) SettingsToken(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// RegenerateToken은 새 API 토큰을 생성하거나 기존 토큰을 재생성하는 요청을 처리한다.
 func (h *AdminHandler) RegenerateToken(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	r.ParseForm()
@@ -1219,6 +1250,7 @@ func (h *AdminHandler) RegenerateToken(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// DeleteToken은 특정 API 토큰을 삭제하는 요청을 처리한다.
 func (h *AdminHandler) DeleteToken(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	r.ParseForm()
@@ -1237,6 +1269,7 @@ func (h *AdminHandler) DeleteToken(w http.ResponseWriter, r *http.Request) {
 
 // === Settings: Slack ===
 
+// SettingsSlack은 Slack 알림 설정 페이지를 렌더링한다.
 func (h *AdminHandler) SettingsSlack(w http.ResponseWriter, r *http.Request) {
 	webhook, storeErr := h.store.GetSlackWebhookURL(r.Context())
 	if storeErr != nil { slog.Warn("store error", "method", "GetSlackWebhookURL", "error", storeErr) }
@@ -1248,6 +1281,7 @@ func (h *AdminHandler) SettingsSlack(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// SlackWebhookSave는 Slack Webhook URL 및 채널 설정 저장 요청을 처리한다.
 func (h *AdminHandler) SlackWebhookSave(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	r.ParseForm()
@@ -1275,6 +1309,7 @@ func (h *AdminHandler) SlackWebhookSave(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// SlackWebhookDelete는 저장된 Slack Webhook URL을 삭제하여 알림을 비활성화한다.
 func (h *AdminHandler) SlackWebhookDelete(w http.ResponseWriter, r *http.Request) {
 	t := NewTranslator(h.lang)
 	h.store.DeleteSlackWebhookURL(r.Context())
@@ -1284,6 +1319,7 @@ func (h *AdminHandler) SlackWebhookDelete(w http.ResponseWriter, r *http.Request
 	})
 }
 
+// SlackWebhookTest는 테스트 페일오버 이벤트를 사용하여 Slack 알림 전송을 테스트한다.
 func (h *AdminHandler) SlackWebhookTest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	t := NewTranslator(h.lang)
@@ -1330,6 +1366,7 @@ func (h *AdminHandler) SlackWebhookTest(w http.ResponseWriter, r *http.Request) 
 
 // === Settings: Account ===
 
+// SettingsAccount는 관리자 계정 설정 페이지를 렌더링한다. 기본 비밀번호 사용 여부를 표시한다.
 func (h *AdminHandler) SettingsAccount(w http.ResponseWriter, r *http.Request) {
 	isDefault := h.session.IsDefaultPassword()
 	h.render(w, "base", PageData{
@@ -1338,6 +1375,7 @@ func (h *AdminHandler) SettingsAccount(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// SettingsAccountSubmit은 관리자 비밀번호 변경 요청을 처리한다. 현재 비밀번호 검증 후 새 비밀번호를 저장한다.
 func (h *AdminHandler) SettingsAccountSubmit(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	t := NewTranslator(h.lang)

@@ -24,7 +24,9 @@ type eventCreateRequest struct {
 	SentinelNodeName string `json:"sentinel_node_name"`
 }
 
-// CreateEventHandler receives a failover event from sentinel-agent.
+// CreateEventHandler는 sentinel-agent로부터 페일오버 이벤트를 수신하는 핸들러를 반환한다.
+// 이벤트는 백그라운드 고루틴에서 60초 타임아웃으로 처리되며,
+// 접수 즉시 202 Accepted 를 응답한다.
 func CreateEventHandler(s store.Store, fm *core.FailoverManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req eventCreateRequest
@@ -63,7 +65,8 @@ func CreateEventHandler(s store.Store, fm *core.FailoverManager) http.HandlerFun
 	}
 }
 
-// ListEventsHandler returns recent events.
+// ListEventsHandler는 최근 이벤트 목록을 반환하는 핸들러를 반환한다.
+// 최대 50개의 최신 이벤트를 조회한다.
 func ListEventsHandler(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		events, err := s.GetRecentEvents(r.Context(), 50)

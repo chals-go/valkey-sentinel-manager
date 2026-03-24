@@ -6,7 +6,9 @@ import (
 	"github.com/chals-go/valkey-sentinel-manager/internal/dns"
 )
 
-// HealthHandler returns the health check handler.
+// HealthHandler는 서비스 상태를 확인하는 헬스 체크 핸들러를 반환한다.
+// 등록된 모든 DNS 프로바이더의 상태를 점검하고, 하나라도 비정상이면
+// 응답 상태를 "error"로 설정한다.
 func HealthHandler(providers map[string]dns.Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		providerStatus := make(map[string]bool, len(providers))

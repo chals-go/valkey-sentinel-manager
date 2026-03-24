@@ -1,10 +1,11 @@
-// Package web implements the admin web UI handlers.
+// Package web는 관리자 웹 UI 핸들러와 관련 유틸리티를 구현한다.
 package web
 
-// Translator returns a translated string for a given key.
+// Translator는 주어진 키에 해당하는 번역 문자열을 반환하는 함수 타입이다.
 type Translator func(key string) string
 
-// NewTranslator creates a Translator for the given language.
+// NewTranslator는 지정된 언어로 번역을 수행하는 Translator를 생성하여 반환한다.
+// 지원하지 않는 언어가 지정된 경우 영어를 기본값으로 사용한다.
 func NewTranslator(lang string) Translator {
 	msgs, ok := translations[lang]
 	if !ok {

@@ -13,14 +13,14 @@ import (
 	"github.com/chals-go/valkey-sentinel-manager/internal/store"
 )
 
-// FailoverManager orchestrates event processing and DNS updates.
+// FailoverManager는 이벤트 처리와 DNS 업데이트를 조율하는 구조체이다.
 type FailoverManager struct {
 	store          store.Store
 	eventProcessor *EventProcessor
 	dnsProviders   map[string]dns.Provider
 }
 
-// NewFailoverManager creates a FailoverManager.
+// NewFailoverManager는 FailoverManager를 생성하여 반환한다.
 func NewFailoverManager(s store.Store, ep *EventProcessor, providers map[string]dns.Provider) *FailoverManager {
 	return &FailoverManager{
 		store:          s,
@@ -29,7 +29,7 @@ func NewFailoverManager(s store.Store, ep *EventProcessor, providers map[string]
 	}
 }
 
-// HandleEvent processes a failover event and performs DNS updates if needed.
+// HandleEvent는 페일오버 이벤트를 처리하고, 필요한 경우 DNS 업데이트를 수행한다.
 func (fm *FailoverManager) HandleEvent(ctx context.Context, event *models.FailoverEvent) (*EventProcessResult, error) {
 	cluster, err := fm.store.GetCluster(ctx, event.MasterName)
 	if err != nil {
@@ -79,7 +79,7 @@ func (fm *FailoverManager) getProvider(cluster *models.Cluster) dns.Provider {
 	return p
 }
 
-// handleFailover updates primary DNS to the new master IP, then syncs replica DNS from Sentinel.
+// handleFailover는 프라이머리 DNS를 새 마스터 IP로 갱신하고, 센티널 상태를 기반으로 레플리카 DNS를 동기화한다.
 func (fm *FailoverManager) handleFailover(ctx context.Context, cluster *models.Cluster, event *models.FailoverEvent) {
 	if !validateIP(event.ToIP) {
 		slog.Error("invalid IP address", "ip", event.ToIP)
@@ -158,7 +158,7 @@ func (fm *FailoverManager) handleFailover(ctx context.Context, cluster *models.C
 	slog.Info("failover completed", "cluster", cluster.GroupName, "new_master", event.ToIP)
 }
 
-// handleReplicaDown removes a downed replica IP from the replica DNS.
+// handleReplicaDown은 다운된 레플리카 IP를 레플리카 DNS에서 제거한다.
 func (fm *FailoverManager) handleReplicaDown(ctx context.Context, cluster *models.Cluster, event *models.FailoverEvent) {
 	if !validateIP(event.FromIP) || cluster.ReplicaDNS == nil {
 		return
@@ -213,7 +213,7 @@ func (fm *FailoverManager) handleReplicaDown(ctx context.Context, cluster *model
 	}
 }
 
-// handleReplicaUp adds a recovered replica IP to the replica DNS.
+// handleReplicaUp은 복구된 레플리카 IP를 레플리카 DNS에 추가한다.
 func (fm *FailoverManager) handleReplicaUp(ctx context.Context, cluster *models.Cluster, event *models.FailoverEvent) {
 	if !validateIP(event.FromIP) || cluster.ReplicaDNS == nil {
 		return
@@ -259,7 +259,7 @@ func (fm *FailoverManager) handleReplicaUp(ctx context.Context, cluster *models.
 	}
 }
 
-// healthySlaveIPs returns IPs of slaves that are not s_down and not the master.
+// healthySlaveIPs는 s_down 상태가 아니고 마스터가 아닌 슬레이브의 IP 목록을 반환한다.
 func healthySlaveIPs(detail *MasterDetail) []string {
 	var ips []string
 	for _, s := range detail.Slaves {
@@ -270,7 +270,7 @@ func healthySlaveIPs(detail *MasterDetail) []string {
 	return ips
 }
 
-// allSlaveIPs returns all slave IPs except the master.
+// allSlaveIPs는 마스터를 제외한 모든 슬레이브 IP 목록을 반환한다.
 func allSlaveIPs(detail *MasterDetail) []string {
 	var ips []string
 	for _, s := range detail.Slaves {

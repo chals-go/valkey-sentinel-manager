@@ -1,4 +1,4 @@
-// Package store defines the storage interface and its implementations.
+// Package store는 클러스터, 센티널, 이벤트 등의 데이터를 저장하고 조회하는 저장소 인터페이스와 구현체를 제공한다.
 package store
 
 import (
@@ -9,59 +9,100 @@ import (
 	"github.com/chals-go/valkey-sentinel-manager/internal/models"
 )
 
-// ErrNotFound indicates that the requested resource does not exist.
+// ErrNotFound는 요청한 리소스가 존재하지 않을 때 반환되는 오류이다.
 var ErrNotFound = errors.New("not found")
 
-// Store is the interface for all data persistence operations.
+// Store는 모든 데이터 영속성 작업을 위한 저장소 인터페이스이다.
 type Store interface {
-	// Events
+	// 이벤트
+
+	// RecordEvent는 페일오버 이벤트를 기록하고 현재 보고 횟수를 반환한다.
 	RecordEvent(ctx context.Context, event *models.FailoverEvent) (int, error)
+	// GetEventCount는 지정한 중복 제거 키에 대한 현재 보고 횟수를 반환한다.
 	GetEventCount(ctx context.Context, dedupKey string) (int, error)
+	// GetRecentEvents는 최근 이벤트를 limit 개수만큼 반환한다.
 	GetRecentEvents(ctx context.Context, limit int) ([]*models.FailoverEvent, error)
 
-	// Distributed lock
+	// 분산 락
+
+	// AcquireLock은 지정한 키에 대한 분산 락을 획득한다.
 	AcquireLock(ctx context.Context, key string, ttl time.Duration) (bool, error)
+	// ReleaseLock은 지정한 키에 대한 분산 락을 해제한다.
 	ReleaseLock(ctx context.Context, key string) error
 
-	// Sentinels
+	// 센티널
+
+	// RegisterSentinel은 센티널 노드를 등록한다.
 	RegisterSentinel(ctx context.Context, s *models.Sentinel) error
+	// UnregisterSentinel은 센티널 노드를 제거한다.
 	UnregisterSentinel(ctx context.Context, name string) (bool, error)
+	// GetSentinel은 이름으로 센티널을 조회한다.
 	GetSentinel(ctx context.Context, name string) (*models.Sentinel, error)
+	// ListSentinels는 모든 센티널 목록을 반환한다. groupName이 비어있으면 전체를 반환한다.
 	ListSentinels(ctx context.Context, groupName string) ([]*models.Sentinel, error)
+	// UpdateSentinelLastSeen은 센티널의 마지막 접속 시각을 갱신한다.
 	UpdateSentinelLastSeen(ctx context.Context, name string, timestamp float64) error
 
-	// Clusters
+	// 클러스터
+
+	// RegisterCluster는 클러스터를 등록한다.
 	RegisterCluster(ctx context.Context, c *models.Cluster) error
+	// UnregisterCluster는 master_name으로 클러스터를 제거한다.
 	UnregisterCluster(ctx context.Context, masterName string) (bool, error)
+	// GetCluster는 master_name으로 클러스터를 조회한다.
 	GetCluster(ctx context.Context, masterName string) (*models.Cluster, error)
+	// ListClusters는 등록된 모든 클러스터를 반환한다.
 	ListClusters(ctx context.Context) ([]*models.Cluster, error)
 
-	// Admin auth
+	// 관리자 인증
+
+	// GetAdminPasswordHash는 저장된 관리자 비밀번호 해시를 반환한다.
 	GetAdminPasswordHash(ctx context.Context) (string, error)
+	// SetAdminPasswordHash는 관리자 비밀번호 해시를 저장한다.
 	SetAdminPasswordHash(ctx context.Context, hash string) error
 
-	// API token
+	// API 토큰
+
+	// GetAPIToken은 저장된 API 토큰을 반환한다.
 	GetAPIToken(ctx context.Context) (string, error)
+	// SetAPIToken은 API 토큰을 저장한다.
 	SetAPIToken(ctx context.Context, token string) error
+	// DeleteAPIToken은 API 토큰을 삭제한다.
 	DeleteAPIToken(ctx context.Context) error
 
 	// Slack
+
+	// GetSlackWebhookURL은 저장된 Slack 웹훅 URL을 반환한다.
 	GetSlackWebhookURL(ctx context.Context) (string, error)
+	// SetSlackWebhookURL은 Slack 웹훅 URL을 저장한다.
 	SetSlackWebhookURL(ctx context.Context, url string) error
+	// DeleteSlackWebhookURL은 Slack 웹훅 URL을 삭제한다.
 	DeleteSlackWebhookURL(ctx context.Context) error
+	// GetSlackChannel은 저장된 Slack 채널 이름을 반환한다.
 	GetSlackChannel(ctx context.Context) (string, error)
+	// SetSlackChannel은 Slack 채널 이름을 저장한다.
 	SetSlackChannel(ctx context.Context, channel string) error
 
-	// Runtime settings
+	// 런타임 설정
+
+	// GetRuntimeSettings는 저장된 런타임 설정을 반환한다.
 	GetRuntimeSettings(ctx context.Context) (map[string]string, error)
+	// SaveRuntimeSettings는 런타임 설정 전체를 저장한다.
 	SaveRuntimeSettings(ctx context.Context, settings map[string]string) error
 
-	// DNS provider config
+	// DNS 공급자 설정
+
+	// SaveDNSProviderConfig는 DNS 공급자 설정을 저장한다.
 	SaveDNSProviderConfig(ctx context.Context, name string, cfg map[string]string) error
+	// GetDNSProviderConfig는 지정한 DNS 공급자의 설정을 반환한다.
 	GetDNSProviderConfig(ctx context.Context, name string) (map[string]string, error)
+	// ListDNSProviderConfigs는 모든 DNS 공급자 설정을 반환한다.
 	ListDNSProviderConfigs(ctx context.Context) (map[string]map[string]string, error)
+	// DeleteDNSProviderConfig는 지정한 DNS 공급자 설정을 삭제한다.
 	DeleteDNSProviderConfig(ctx context.Context, name string) (bool, error)
 
-	// Lifecycle
+	// 생명주기
+
+	// Close는 저장소 연결을 닫는다.
 	Close() error
 }

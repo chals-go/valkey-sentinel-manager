@@ -13,7 +13,7 @@ import (
 	"github.com/chals-go/valkey-sentinel-manager/internal/models"
 )
 
-// eventStyle maps event types to Slack emoji and label.
+// eventStyle은 이벤트 타입별 Slack 이모지와 레이블을 매핑하는 변수이다.
 var eventStyle = map[models.EventType]struct {
 	icon  string
 	label string
@@ -23,6 +23,7 @@ var eventStyle = map[models.EventType]struct {
 	models.EventTypeReplicaUp:   {icon: ":large_green_circle:", label: "Replica Up"},
 }
 
+// buildMessageText는 이벤트와 클러스터 정보를 바탕으로 Slack 메시지 본문을 생성한다.
 func buildMessageText(event *models.FailoverEvent, cluster *models.Cluster) string {
 	style, ok := eventStyle[event.EventType]
 	if !ok {
@@ -73,7 +74,7 @@ func buildMessageText(event *models.FailoverEvent, cluster *models.Cluster) stri
 	return strings.Join(lines, "\n")
 }
 
-// SendSlackNotification posts an event notification to a Slack incoming webhook.
+// SendSlackNotification은 이벤트 알림을 Slack 인커밍 웹훅으로 전송한다.
 func SendSlackNotification(ctx context.Context, webhookURL string, event *models.FailoverEvent, cluster *models.Cluster, channel string) bool {
 	text := buildMessageText(event, cluster)
 
@@ -118,7 +119,7 @@ func SendSlackNotification(ctx context.Context, webhookURL string, event *models
 	return false
 }
 
-// SendSentinelDownSlack posts a sentinel-node-down alert to Slack.
+// SendSentinelDownSlack은 센티널 노드 다운 알림을 Slack으로 전송한다.
 func SendSentinelDownSlack(ctx context.Context, webhookURL, channel, nodeName, addr, groupName string) bool {
 	text := fmt.Sprintf(":red_circle: *Sentinel Node Down*\nGroup : %s\nNode  : %s\nAddr  : %s\nTime  : %s (KST)",
 		groupName, nodeName, addr, time.Now().Format("2006-01-02 15:04:05"))
@@ -156,7 +157,7 @@ func SendSentinelDownSlack(ctx context.Context, webhookURL, channel, nodeName, a
 	return resp.StatusCode == http.StatusOK
 }
 
-// SendSentinelUpSlack posts a sentinel-node-up (recovered) alert to Slack.
+// SendSentinelUpSlack은 센티널 노드 복구 알림을 Slack으로 전송한다.
 func SendSentinelUpSlack(ctx context.Context, webhookURL, channel, nodeName, addr, groupName string) bool {
 	text := fmt.Sprintf(":large_green_circle: *Sentinel Node Up*\nGroup : %s\nNode  : %s\nAddr  : %s\nTime  : %s (KST)",
 		groupName, nodeName, addr, time.Now().Format("2006-01-02 15:04:05"))

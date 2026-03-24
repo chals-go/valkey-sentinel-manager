@@ -1,4 +1,4 @@
-// Package core implements the business logic for failover event processing.
+// Package core는 센티널 이벤트 처리, 페일오버 관리, 헬스체크 등 핵심 비즈니스 로직을 제공한다.
 package core
 
 import (
@@ -9,7 +9,7 @@ import (
 	"github.com/chals-go/valkey-sentinel-manager/internal/store"
 )
 
-// EventProcessResult holds the outcome of processing a single event.
+// EventProcessResult는 단일 이벤트 처리 결과를 담는 구조체이다.
 type EventProcessResult struct {
 	Event           *models.FailoverEvent
 	IsDuplicate     bool
@@ -18,22 +18,22 @@ type EventProcessResult struct {
 	ShouldUpdateDNS bool
 }
 
-// EventProcessor handles event deduplication and quorum decisions.
+// EventProcessor는 이벤트 중복 제거와 쿼럼 판정을 담당하는 구조체이다.
 type EventProcessor struct {
 	store store.Store
 }
 
-// NewEventProcessor creates an EventProcessor.
+// NewEventProcessor는 EventProcessor를 생성하여 반환한다.
 func NewEventProcessor(s store.Store) *EventProcessor {
 	return &EventProcessor{store: s}
 }
 
-// Process records an event and determines whether DNS should be updated.
+// Process는 이벤트를 기록하고 DNS 업데이트 필요 여부를 판정한다.
 //
-// Logic:
-//   - Record the event and get the current report count.
-//   - Quorum mode: trigger DNS update when report_count == quorum_threshold.
-//   - First-come mode (quorum_mode=false): trigger on the first report only.
+// 동작 방식:
+//   - 이벤트를 기록하고 현재 보고 횟수를 가져온다.
+//   - 쿼럼 모드: report_count == quorum_threshold 일 때 DNS 업데이트를 트리거한다.
+//   - 선착순 모드(quorum_mode=false): 첫 번째 보고에서만 트리거한다.
 func (p *EventProcessor) Process(ctx context.Context, event *models.FailoverEvent, quorumMode bool, quorumThreshold int) (*EventProcessResult, error) {
 	// Update sentinel last_seen.
 	_ = p.store.UpdateSentinelLastSeen(ctx, event.SentinelNodeName, event.Timestamp)

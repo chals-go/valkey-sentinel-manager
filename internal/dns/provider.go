@@ -1,28 +1,28 @@
-// Package dns defines the DNS provider interface and implementations.
+// Package dns는 Route53, Azure DNS, BIND 등 다양한 DNS 프로바이더를 통한 DNS 레코드 관리를 제공한다.
 package dns
 
 import "context"
 
-// Provider is the interface for DNS record management.
+// Provider는 DNS 레코드 관리를 위한 인터페이스이다.
 type Provider interface {
-	// UpdateRecord sets a single-value DNS record.
+	// UpdateRecord는 단일 값 DNS 레코드를 설정한다.
 	UpdateRecord(ctx context.Context, zone, name, recordType, value string, ttl int) error
 
-	// UpdateRecordValues replaces all values of a multi-value DNS record.
+	// UpdateRecordValues는 다중 값 DNS 레코드의 모든 값을 교체한다.
 	UpdateRecordValues(ctx context.Context, zone, name, recordType string, values []string, ttl int) error
 
-	// AddRecordValue appends a value to a multi-value DNS record.
+	// AddRecordValue는 다중 값 DNS 레코드에 값을 추가한다.
 	AddRecordValue(ctx context.Context, zone, name, recordType, value string, ttl int) error
 
-	// RemoveRecordValue removes a value from a multi-value DNS record.
+	// RemoveRecordValue는 다중 값 DNS 레코드에서 특정 값을 제거한다.
 	RemoveRecordValue(ctx context.Context, zone, name, recordType, value string) error
 
-	// DeleteRecord removes a DNS record entirely.
+	// DeleteRecord는 DNS 레코드 전체를 삭제한다.
 	DeleteRecord(ctx context.Context, zone, name, recordType string) error
 
-	// VerifyRecord checks that a DNS record has the expected value.
+	// VerifyRecord는 DNS 레코드가 기대하는 값을 가지고 있는지 확인한다.
 	VerifyRecord(ctx context.Context, zone, name, expectedValue string) (bool, error)
 
-	// HealthCheck verifies the DNS provider connection.
+	// HealthCheck는 DNS 프로바이더 연결 상태를 확인한다.
 	HealthCheck(ctx context.Context) error
 }

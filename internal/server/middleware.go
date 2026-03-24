@@ -1,4 +1,4 @@
-// Package server provides HTTP server creation, middleware, and routing.
+// Package server는 HTTP 서버 생성, 미들웨어, 라우팅 기능을 제공한다.
 package server
 
 import (
@@ -7,13 +7,13 @@ import (
 	"time"
 )
 
-// SecurityHeaders wraps an http.Handler and adds security headers to every response.
-// Set secureCookie=true when running behind HTTPS to enable HSTS.
+// SecurityHeaders는 http.Handler를 감싸 모든 응답에 보안 헤더를 추가한다.
+// HTTPS 환경에서 HSTS를 활성화하려면 SecurityHeadersWithOptions를 사용한다.
 func SecurityHeaders(next http.Handler) http.Handler {
 	return SecurityHeadersWithOptions(next, false)
 }
 
-// SecurityHeadersWithOptions creates security headers middleware with HTTPS option.
+// SecurityHeadersWithOptions는 HTTPS 옵션을 지정할 수 있는 보안 헤더 미들웨어를 생성한다.
 func SecurityHeadersWithOptions(next http.Handler, https bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -35,7 +35,7 @@ func SecurityHeadersWithOptions(next http.Handler, https bool) http.Handler {
 	})
 }
 
-// responseWriter wraps http.ResponseWriter to capture the status code.
+// responseWriter는 상태 코드를 캡처하기 위해 http.ResponseWriter를 감싸는 내부 타입이다.
 type responseWriter struct {
 	http.ResponseWriter
 	statusCode int
@@ -46,7 +46,7 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-// RequestLogger logs each HTTP request with method, path, status, and duration.
+// RequestLogger는 각 HTTP 요청의 메서드, 경로, 상태 코드, 처리 시간을 로깅하는 미들웨어를 반환한다.
 func RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

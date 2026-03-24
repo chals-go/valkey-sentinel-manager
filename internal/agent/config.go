@@ -1,4 +1,6 @@
-// Package agent implements the sentinel-agent client that runs on Sentinel nodes.
+// Package agent는 센티널 노드에서 실행되는 sentinel-agent 클라이언트를 구현한다.
+// 재설정(reconfig) 스크립트와 알림(notify) 스크립트의 실행 진입점 및
+// Monitor 서버로의 이벤트 전송 기능을 제공한다.
 package agent
 
 import (
@@ -9,7 +11,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config holds sentinel-agent settings.
+// Config는 sentinel-agent의 설정값을 보관하는 구조체다.
+// YAML 파일과 환경 변수에서 값을 읽어 채운다.
 type Config struct {
 	MonitorURL       string `yaml:"monitor_url"`
 	APIKey           string `yaml:"api_key"`
@@ -19,8 +22,8 @@ type Config struct {
 	RetryCount       int    `yaml:"retry_count"`
 }
 
-// LoadConfig loads configuration from a YAML file then environment variables.
-// Priority: env vars > YAML file > defaults.
+// LoadConfig는 YAML 파일과 환경 변수에서 설정을 읽어 Config를 반환한다.
+// 우선순위: 환경 변수 > YAML 파일 > 기본값 순으로 적용된다.
 func LoadConfig() *Config {
 	cfg := &Config{
 		MonitorURL:     "http://localhost:8000",

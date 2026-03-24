@@ -1,4 +1,5 @@
-// Package api implements the REST API handlers.
+// Package api는 Valkey Sentinel Manager의 REST API 핸들러를 구현한다.
+// 모든 응답은 Response 구조체를 기반으로 한 JSON 형식으로 반환된다.
 package api
 
 import (
@@ -6,7 +7,7 @@ import (
 	"net/http"
 )
 
-// Response is the standard JSON response envelope.
+// Response는 모든 API 응답에 사용되는 표준 JSON 응답 봉투(envelope) 구조체다.
 type Response struct {
 	Status  string `json:"status"`
 	Data    any    `json:"data,omitempty"`

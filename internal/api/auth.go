@@ -9,8 +9,9 @@ import (
 	"github.com/chals-go/valkey-sentinel-manager/internal/store"
 )
 
-// TokenAuth returns middleware that verifies the Bearer token.
-// Supports multiple named tokens stored in runtime settings as JSON.
+// TokenAuth는 Bearer 토큰을 검증하는 HTTP 미들웨어를 반환한다.
+// 런타임 설정에 JSON 형식으로 저장된 다중 명명 토큰을 지원하며,
+// 유효한 토큰이 없으면 401 Unauthorized를 반환한다.
 func TokenAuth(s store.Store) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

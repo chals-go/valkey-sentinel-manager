@@ -30,7 +30,7 @@ type clusterCreateRequest struct {
 	QuorumThreshold  int            `json:"quorum_threshold"`
 }
 
-// ListClustersHandler returns all registered clusters.
+// ListClustersHandler는 등록된 모든 클러스터 목록을 반환하는 핸들러를 반환한다.
 func ListClustersHandler(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		clusters, err := s.ListClusters(r.Context())
@@ -42,7 +42,8 @@ func ListClustersHandler(s store.Store) http.HandlerFunc {
 	}
 }
 
-// CreateClusterHandler registers a new cluster.
+// CreateClusterHandler는 새로운 클러스터를 등록하는 핸들러를 반환한다.
+// 동일한 masterName이 이미 존재하면 409 Conflict를 반환한다.
 func CreateClusterHandler(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req clusterCreateRequest
@@ -88,7 +89,8 @@ func CreateClusterHandler(s store.Store) http.HandlerFunc {
 	}
 }
 
-// GetClusterHandler returns a cluster by master name.
+// GetClusterHandler는 masterName으로 특정 클러스터를 조회하는 핸들러를 반환한다.
+// 클러스터가 존재하지 않으면 404 Not Found를 반환한다.
 func GetClusterHandler(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		masterName := r.PathValue("masterName")
@@ -105,7 +107,8 @@ func GetClusterHandler(s store.Store) http.HandlerFunc {
 	}
 }
 
-// DeleteClusterHandler unregisters a cluster.
+// DeleteClusterHandler는 클러스터 등록을 해제하는 핸들러를 반환한다.
+// 클러스터가 존재하지 않으면 404 Not Found를 반환한다.
 func DeleteClusterHandler(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		masterName := r.PathValue("masterName")

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// monitoringPages defines pages that show the auto-refresh control.
+// monitoringPages는 자동 새로고침 컨트롤을 표시하는 페이지 목록을 정의한다.
 var monitoringPages = map[string]bool{
 	"dashboard": true,
 	"clusters":  true,
@@ -17,7 +17,7 @@ var monitoringPages = map[string]bool{
 	"events":    true,
 }
 
-// TemplateFuncMap returns the default FuncMap for all templates.
+// TemplateFuncMap은 모든 템플릿에서 사용하는 기본 FuncMap을 반환한다.
 func TemplateFuncMap(t func(string) string) template.FuncMap {
 	return template.FuncMap{
 		"t": t,
@@ -73,12 +73,12 @@ func TemplateFuncMap(t func(string) string) template.FuncMap {
 	}
 }
 
-// ParseTemplates parses all HTML templates from the given filesystem.
+// ParseTemplates는 주어진 파일시스템에서 모든 HTML 템플릿을 파싱한다.
 func ParseTemplates(fsys fs.FS, funcMap template.FuncMap) (*template.Template, error) {
 	return template.New("").Funcs(funcMap).ParseFS(fsys, "web/templates/*.html")
 }
 
-// RenderTemplate writes a named template to the response.
+// RenderTemplate은 지정한 이름의 템플릿을 HTTP 응답에 렌더링한다.
 func RenderTemplate(w http.ResponseWriter, tmpl *template.Template, name string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
