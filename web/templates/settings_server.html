@@ -33,6 +33,7 @@
   <div class="p-6">
     <p class="text-sm text-slate-500 mb-6">{{ t "runtime_settings_desc" }}</p>
     <form method="post" action="/admin/settings/server" class="max-w-2xl">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
 
       <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "event_processing" }}</div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

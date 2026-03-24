@@ -65,6 +65,7 @@
     <div class="flex justify-end gap-3">
       <button onclick="closeModal('modal-dns-delete-{{ $name }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
       <form method="post" action="/admin/dns-provider/{{ $name }}/delete" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
         <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">{{ t "delete" }}</button>
       </form>
     </div>
@@ -81,6 +82,7 @@
       <button onclick="closeModal('modal-dns-edit-{{ $name }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
     </div>
     <form method="post" action="/admin/settings/dns/edit/{{ $name }}">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
       <input type="hidden" name="provider_type" value="{{ index $cfg "type" }}">
 
       {{ if eq (index $cfg "type") "route53" }}
@@ -159,6 +161,7 @@
       <button onclick="closeModal('modal-dns-new')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
     </div>
     <form method="post" action="/admin/dns-provider/new">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "provider_name" }}</label>

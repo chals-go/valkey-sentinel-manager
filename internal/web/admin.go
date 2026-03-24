@@ -43,13 +43,15 @@ type PageData struct {
 	Data         map[string]any
 }
 
-func (h *AdminHandler) render(w http.ResponseWriter, name string, data PageData) {
+func (h *AdminHandler) render(w http.ResponseWriter, r *http.Request, name string, data PageData) {
 	t := NewTranslator(h.lang)
+	csrfToken := csrfTokenFromContext(r.Context())
 	funcMap := template.FuncMap{
 		"t": t,
 		"isMonitoringPage": func(page string) bool {
 			return page == "dashboard" || page == "clusters" || page == "sentinels" || page == "events"
 		},
+		"csrfToken": func() string { return csrfToken },
 	}
 	tmpl, err := h.tmpl.Clone()
 	if err != nil {
@@ -73,56 +75,59 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/login", h.LoginPage)
 	mux.HandleFunc("POST /admin/login", h.LoginSubmit)
 
-	auth := h.session.RequireAuth
+	// protect는 인증 + CSRF 보호를 적용하는 미들웨어 체인이다.
+	protect := func(next http.Handler) http.Handler {
+		return h.session.RequireAuth(h.session.CSRFProtect(next))
+	}
 
 	// Dashboard
-	mux.Handle("GET /admin/", auth(http.HandlerFunc(h.Dashboard)))
-	mux.Handle("POST /admin/logout", auth(http.HandlerFunc(h.Logout)))
+	mux.Handle("GET /admin/", protect(http.HandlerFunc(h.Dashboard)))
+	mux.Handle("POST /admin/logout", protect(http.HandlerFunc(h.Logout)))
 
 	// Clusters
-	mux.Handle("GET /admin/clusters", auth(http.HandlerFunc(h.Clusters)))
-	mux.Handle("GET /admin/clusters/new", auth(http.HandlerFunc(h.ClusterFormPage)))
-	mux.Handle("POST /admin/clusters/new", auth(http.HandlerFunc(h.ClusterCreate)))
-	mux.Handle("GET /admin/clusters/{masterName}/edit", auth(http.HandlerFunc(h.ClusterEditPage)))
-	mux.Handle("POST /admin/clusters/{masterName}/edit", auth(http.HandlerFunc(h.ClusterEditSubmit)))
-	mux.Handle("POST /admin/clusters/{masterName}/delete", auth(http.HandlerFunc(h.ClusterDelete)))
-	mux.Handle("POST /admin/clusters/{masterName}/pause", auth(http.HandlerFunc(h.ClusterPause)))
-	mux.Handle("POST /admin/clusters/{masterName}/resume", auth(http.HandlerFunc(h.ClusterResume)))
-	mux.Handle("POST /admin/clusters/{masterName}/test-failover", auth(http.HandlerFunc(h.ClusterTestFailover)))
-	mux.Handle("POST /admin/clusters/{masterName}/sync-dns", auth(http.HandlerFunc(h.ClusterSyncDNS)))
+	mux.Handle("GET /admin/clusters", protect(http.HandlerFunc(h.Clusters)))
+	mux.Handle("GET /admin/clusters/new", protect(http.HandlerFunc(h.ClusterFormPage)))
+	mux.Handle("POST /admin/clusters/new", protect(http.HandlerFunc(h.ClusterCreate)))
+	mux.Handle("GET /admin/clusters/{masterName}/edit", protect(http.HandlerFunc(h.ClusterEditPage)))
+	mux.Handle("POST /admin/clusters/{masterName}/edit", protect(http.HandlerFunc(h.ClusterEditSubmit)))
+	mux.Handle("POST /admin/clusters/{masterName}/delete", protect(http.HandlerFunc(h.ClusterDelete)))
+	mux.Handle("POST /admin/clusters/{masterName}/pause", protect(http.HandlerFunc(h.ClusterPause)))
+	mux.Handle("POST /admin/clusters/{masterName}/resume", protect(http.HandlerFunc(h.ClusterResume)))
+	mux.Handle("POST /admin/clusters/{masterName}/test-failover", protect(http.HandlerFunc(h.ClusterTestFailover)))
+	mux.Handle("POST /admin/clusters/{masterName}/sync-dns", protect(http.HandlerFunc(h.ClusterSyncDNS)))
 
 	// Sentinels
-	mux.Handle("GET /admin/sentinels", auth(http.HandlerFunc(h.Sentinels)))
-	mux.Handle("POST /admin/sentinels/new-cluster", auth(http.HandlerFunc(h.SentinelClusterCreate)))
-	mux.Handle("POST /admin/sentinels/{grpName}/delete-cluster", auth(http.HandlerFunc(h.SentinelClusterDelete)))
-	mux.Handle("POST /admin/sentinels/{grpName}/edit", auth(http.HandlerFunc(h.SentinelClusterEditSubmit)))
-	mux.Handle("POST /admin/sentinels/{grpName}/toggle-alert", auth(http.HandlerFunc(h.SentinelToggleAlert)))
-	mux.Handle("POST /admin/sentinels/{grpName}/add-node", auth(http.HandlerFunc(h.SentinelAddNode)))
-	mux.Handle("POST /admin/sentinels/{nodeName}/delete-node", auth(http.HandlerFunc(h.SentinelDeleteNode)))
+	mux.Handle("GET /admin/sentinels", protect(http.HandlerFunc(h.Sentinels)))
+	mux.Handle("POST /admin/sentinels/new-cluster", protect(http.HandlerFunc(h.SentinelClusterCreate)))
+	mux.Handle("POST /admin/sentinels/{grpName}/delete-cluster", protect(http.HandlerFunc(h.SentinelClusterDelete)))
+	mux.Handle("POST /admin/sentinels/{grpName}/edit", protect(http.HandlerFunc(h.SentinelClusterEditSubmit)))
+	mux.Handle("POST /admin/sentinels/{grpName}/toggle-alert", protect(http.HandlerFunc(h.SentinelToggleAlert)))
+	mux.Handle("POST /admin/sentinels/{grpName}/add-node", protect(http.HandlerFunc(h.SentinelAddNode)))
+	mux.Handle("POST /admin/sentinels/{nodeName}/delete-node", protect(http.HandlerFunc(h.SentinelDeleteNode)))
 
 	// Events
-	mux.Handle("GET /admin/events", auth(http.HandlerFunc(h.Events)))
+	mux.Handle("GET /admin/events", protect(http.HandlerFunc(h.Events)))
 
 	// Settings redirect
-	mux.Handle("GET /admin/settings", auth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /admin/settings", protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h.redirect(w, r, "/admin/settings/server")
 	})))
-	mux.Handle("GET /admin/settings/server", auth(http.HandlerFunc(h.SettingsServer)))
-	mux.Handle("POST /admin/settings/server", auth(http.HandlerFunc(h.SettingsServerSave)))
-	mux.Handle("GET /admin/settings/dns", auth(http.HandlerFunc(h.SettingsDNS)))
-	mux.Handle("POST /admin/dns-provider/new", auth(http.HandlerFunc(h.DNSProviderCreate)))
-	mux.Handle("GET /admin/settings/dns/edit/{providerName}", auth(http.HandlerFunc(h.DNSProviderEditPage)))
-	mux.Handle("POST /admin/settings/dns/edit/{providerName}", auth(http.HandlerFunc(h.DNSProviderEditSubmit)))
-	mux.Handle("POST /admin/dns-provider/{providerName}/delete", auth(http.HandlerFunc(h.DNSProviderDelete)))
-	mux.Handle("GET /admin/settings/token", auth(http.HandlerFunc(h.SettingsToken)))
-	mux.Handle("POST /admin/regenerate-token", auth(http.HandlerFunc(h.RegenerateToken)))
-	mux.Handle("POST /admin/delete-token", auth(http.HandlerFunc(h.DeleteToken)))
-	mux.Handle("GET /admin/settings/slack", auth(http.HandlerFunc(h.SettingsSlack)))
-	mux.Handle("POST /admin/slack-webhook", auth(http.HandlerFunc(h.SlackWebhookSave)))
-	mux.Handle("POST /admin/slack-webhook/delete", auth(http.HandlerFunc(h.SlackWebhookDelete)))
-	mux.Handle("POST /admin/slack-webhook/test", auth(http.HandlerFunc(h.SlackWebhookTest)))
-	mux.Handle("GET /admin/settings/account", auth(http.HandlerFunc(h.SettingsAccount)))
-	mux.Handle("POST /admin/settings/account", auth(http.HandlerFunc(h.SettingsAccountSubmit)))
+	mux.Handle("GET /admin/settings/server", protect(http.HandlerFunc(h.SettingsServer)))
+	mux.Handle("POST /admin/settings/server", protect(http.HandlerFunc(h.SettingsServerSave)))
+	mux.Handle("GET /admin/settings/dns", protect(http.HandlerFunc(h.SettingsDNS)))
+	mux.Handle("POST /admin/dns-provider/new", protect(http.HandlerFunc(h.DNSProviderCreate)))
+	mux.Handle("GET /admin/settings/dns/edit/{providerName}", protect(http.HandlerFunc(h.DNSProviderEditPage)))
+	mux.Handle("POST /admin/settings/dns/edit/{providerName}", protect(http.HandlerFunc(h.DNSProviderEditSubmit)))
+	mux.Handle("POST /admin/dns-provider/{providerName}/delete", protect(http.HandlerFunc(h.DNSProviderDelete)))
+	mux.Handle("GET /admin/settings/token", protect(http.HandlerFunc(h.SettingsToken)))
+	mux.Handle("POST /admin/regenerate-token", protect(http.HandlerFunc(h.RegenerateToken)))
+	mux.Handle("POST /admin/delete-token", protect(http.HandlerFunc(h.DeleteToken)))
+	mux.Handle("GET /admin/settings/slack", protect(http.HandlerFunc(h.SettingsSlack)))
+	mux.Handle("POST /admin/slack-webhook", protect(http.HandlerFunc(h.SlackWebhookSave)))
+	mux.Handle("POST /admin/slack-webhook/delete", protect(http.HandlerFunc(h.SlackWebhookDelete)))
+	mux.Handle("POST /admin/slack-webhook/test", protect(http.HandlerFunc(h.SlackWebhookTest)))
+	mux.Handle("GET /admin/settings/account", protect(http.HandlerFunc(h.SettingsAccount)))
+	mux.Handle("POST /admin/settings/account", protect(http.HandlerFunc(h.SettingsAccountSubmit)))
 }
 
 // === Login / Logout ===
@@ -133,7 +138,7 @@ func (h *AdminHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 		h.redirect(w, r, "/admin/")
 		return
 	}
-	h.render(w, "base", PageData{Page: "login", HideSidebar: true})
+	h.render(w, r, "base", PageData{Page: "login", HideSidebar: true})
 }
 
 // LoginSubmit은 로그인 폼 제출을 처리하고, 인증 성공 시 세션을 생성하여 대시보드로 리다이렉트한다.
@@ -141,7 +146,7 @@ func (h *AdminHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	ip := r.RemoteAddr
 	if h.session.IsLoginLocked(ip) {
 		t := NewTranslator(h.lang)
-		h.render(w, "base", PageData{Page: "login", HideSidebar: true, FlashMessage: t("flash_login_locked"), FlashType: "error"})
+		h.render(w, r, "base", PageData{Page: "login", HideSidebar: true, FlashMessage: t("flash_login_locked"), FlashType: "error"})
 		return
 	}
 
@@ -160,7 +165,7 @@ func (h *AdminHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		h.session.RecordLoginFailure(ip)
 		t := NewTranslator(h.lang)
-		h.render(w, "base", PageData{Page: "login", HideSidebar: true, FlashMessage: t("flash_login_failed"), FlashType: "error"})
+		h.render(w, r, "base", PageData{Page: "login", HideSidebar: true, FlashMessage: t("flash_login_failed"), FlashType: "error"})
 		return
 	}
 
@@ -281,7 +286,7 @@ func (h *AdminHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	displayEvents := events[eventStart:eventEnd]
 
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "dashboard",
 		Data: map[string]any{
 			"Clusters":           displayClusters,
@@ -388,7 +393,7 @@ func (h *AdminHandler) Clusters(w http.ResponseWriter, r *http.Request) {
 	}
 	displayClusters := clusters[start:end]
 
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "clusters",
 		Data: map[string]any{
 			"Clusters":             displayClusters,
@@ -419,7 +424,7 @@ func (h *AdminHandler) ClusterFormPage(w http.ResponseWriter, r *http.Request) {
 	for name, cfg := range dnsConfigs {
 		dnsProvidersWithZone[name] = cfg["zone_name"]
 	}
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "cluster-form",
 		Data: map[string]any{
 			"SentinelClusterNames": sortedKeys(sentinelClusterNames),
@@ -451,7 +456,7 @@ func (h *AdminHandler) ClusterEditPage(w http.ResponseWriter, r *http.Request) {
 		dnsProvidersWithZone[name] = cfg["zone_name"]
 	}
 
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "cluster-edit",
 		Data: map[string]any{
 			"Cluster":        cluster,
@@ -748,7 +753,7 @@ func (h *AdminHandler) Sentinels(w http.ResponseWriter, r *http.Request) {
 		alertSettings[grpName] = rt["sentinel_alert:"+grpName] == "true"
 	}
 
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "sentinels",
 		Data: map[string]any{
 			"SentinelGroups": groups,
@@ -952,7 +957,7 @@ func (h *AdminHandler) Events(w http.ResponseWriter, r *http.Request) {
 	}
 	events := allEvents[start:end]
 
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "events",
 		Data: map[string]any{
 			"Events":      events,
@@ -996,7 +1001,7 @@ func (h *AdminHandler) SettingsServer(w http.ResponseWriter, r *http.Request) {
 		storeType = "MEMORY"
 	}
 
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "settings-server",
 		Data: map[string]any{"RuntimeSettings": rt, "StoreType": storeType, "StoreConnected": true},
 	})
@@ -1040,7 +1045,7 @@ func (h *AdminHandler) SettingsDNS(w http.ResponseWriter, r *http.Request) {
 		dnsStatus[name] = err == nil
 	}
 
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "settings-dns",
 		Data: map[string]any{"Configs": configs, "DNSStatus": dnsStatus},
 	})
@@ -1061,7 +1066,7 @@ func (h *AdminHandler) DNSProviderCreate(w http.ResponseWriter, r *http.Request)
 	case "route53":
 		zoneID := strings.TrimSpace(r.FormValue("r53_zone_id"))
 		if zoneID == "" {
-			h.render(w, "base", PageData{Page: "settings-dns", FlashMessage: t("flash_zone_id_required"), FlashType: "error"})
+			h.render(w, r, "base", PageData{Page: "settings-dns", FlashMessage: t("flash_zone_id_required"), FlashType: "error"})
 			return
 		}
 		cfg["zone_id"] = zoneID
@@ -1074,7 +1079,7 @@ func (h *AdminHandler) DNSProviderCreate(w http.ResponseWriter, r *http.Request)
 		rg := strings.TrimSpace(r.FormValue("az_resource_group"))
 		zn := strings.TrimSpace(r.FormValue("az_zone_name"))
 		if subID == "" || rg == "" || zn == "" {
-			h.render(w, "base", PageData{Page: "settings-dns", FlashMessage: t("flash_azure_required"), FlashType: "error"})
+			h.render(w, r, "base", PageData{Page: "settings-dns", FlashMessage: t("flash_azure_required"), FlashType: "error"})
 			return
 		}
 		cfg["subscription_id"] = subID
@@ -1087,7 +1092,7 @@ func (h *AdminHandler) DNSProviderCreate(w http.ResponseWriter, r *http.Request)
 	case "bind":
 		apiURL := strings.TrimSpace(r.FormValue("bind_api_url"))
 		if apiURL == "" {
-			h.render(w, "base", PageData{Page: "settings-dns", FlashMessage: t("flash_api_url_required"), FlashType: "error"})
+			h.render(w, r, "base", PageData{Page: "settings-dns", FlashMessage: t("flash_api_url_required"), FlashType: "error"})
 			return
 		}
 		cfg["api_url"] = apiURL
@@ -1115,7 +1120,7 @@ func (h *AdminHandler) DNSProviderEditPage(w http.ResponseWriter, r *http.Reques
 		h.redirect(w, r, "/admin/settings/dns")
 		return
 	}
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "settings-dns-edit",
 		Data: map[string]any{
 			"ProviderName":   providerName,
@@ -1223,7 +1228,7 @@ func (h *AdminHandler) saveAPITokens(ctx context.Context, tokens map[string]stri
 // SettingsToken은 API 토큰 관리 페이지를 렌더링한다.
 func (h *AdminHandler) SettingsToken(w http.ResponseWriter, r *http.Request) {
 	tokens := h.getAPITokens(r.Context())
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "settings-token",
 		Data: map[string]any{"Tokens": tokens},
 	})
@@ -1244,7 +1249,7 @@ func (h *AdminHandler) RegenerateToken(w http.ResponseWriter, r *http.Request) {
 	tokens[tokenName] = GenerateAPIToken()
 	h.saveAPITokens(ctx, tokens)
 
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "settings-token", FlashMessage: t("flash_token_created"), FlashType: "success",
 		Data: map[string]any{"Tokens": tokens},
 	})
@@ -1261,7 +1266,7 @@ func (h *AdminHandler) DeleteToken(w http.ResponseWriter, r *http.Request) {
 	delete(tokens, tokenName)
 	h.saveAPITokens(ctx, tokens)
 
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "settings-token", FlashMessage: t("flash_token_deleted"), FlashType: "success",
 		Data: map[string]any{"Tokens": tokens},
 	})
@@ -1275,7 +1280,7 @@ func (h *AdminHandler) SettingsSlack(w http.ResponseWriter, r *http.Request) {
 	if storeErr != nil { slog.Warn("store error", "method", "GetSlackWebhookURL", "error", storeErr) }
 	channel, storeErr := h.store.GetSlackChannel(r.Context())
 	if storeErr != nil { slog.Warn("store error", "method", "GetSlackChannel", "error", storeErr) }
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "settings-slack",
 		Data: map[string]any{"WebhookURL": webhook, "Channel": channel},
 	})
@@ -1291,7 +1296,7 @@ func (h *AdminHandler) SlackWebhookSave(w http.ResponseWriter, r *http.Request) 
 	channel := strings.TrimSpace(r.FormValue("slack_channel"))
 
 	if webhookURL == "" {
-		h.render(w, "base", PageData{
+		h.render(w, r, "base", PageData{
 			Page: "settings-slack", FlashMessage: t("flash_webhook_required"), FlashType: "error",
 			Data: map[string]any{"WebhookURL": "", "Channel": channel},
 		})
@@ -1303,7 +1308,7 @@ func (h *AdminHandler) SlackWebhookSave(w http.ResponseWriter, r *http.Request) 
 		h.store.SetSlackChannel(ctx, channel)
 	}
 
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "settings-slack", FlashMessage: t("flash_slack_saved"), FlashType: "success",
 		Data: map[string]any{"WebhookURL": webhookURL, "Channel": channel},
 	})
@@ -1313,7 +1318,7 @@ func (h *AdminHandler) SlackWebhookSave(w http.ResponseWriter, r *http.Request) 
 func (h *AdminHandler) SlackWebhookDelete(w http.ResponseWriter, r *http.Request) {
 	t := NewTranslator(h.lang)
 	h.store.DeleteSlackWebhookURL(r.Context())
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "settings-slack", FlashMessage: t("flash_slack_disabled"), FlashType: "success",
 		Data: map[string]any{"WebhookURL": "", "Channel": ""},
 	})
@@ -1327,7 +1332,7 @@ func (h *AdminHandler) SlackWebhookTest(w http.ResponseWriter, r *http.Request) 
 	webhookURL, storeErr := h.store.GetSlackWebhookURL(ctx)
 	if storeErr != nil { slog.Warn("store error", "method", "GetSlackWebhookURL", "error", storeErr) }
 	if webhookURL == "" {
-		h.render(w, "base", PageData{
+		h.render(w, r, "base", PageData{
 			Page: "settings-slack", FlashMessage: t("flash_slack_no_url"), FlashType: "error",
 			Data: map[string]any{"WebhookURL": "", "Channel": ""},
 		})
@@ -1358,7 +1363,7 @@ func (h *AdminHandler) SlackWebhookTest(w http.ResponseWriter, r *http.Request) 
 		flashType = "error"
 	}
 
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "settings-slack", FlashMessage: msg, FlashType: flashType,
 		Data: map[string]any{"WebhookURL": webhookURL, "Channel": channel},
 	})
@@ -1369,7 +1374,7 @@ func (h *AdminHandler) SlackWebhookTest(w http.ResponseWriter, r *http.Request) 
 // SettingsAccount는 관리자 계정 설정 페이지를 렌더링한다. 기본 비밀번호 사용 여부를 표시한다.
 func (h *AdminHandler) SettingsAccount(w http.ResponseWriter, r *http.Request) {
 	isDefault := h.session.IsDefaultPassword()
-	h.render(w, "base", PageData{
+	h.render(w, r, "base", PageData{
 		Page: "settings-account",
 		Data: map[string]any{"IsDefaultPassword": isDefault},
 	})
@@ -1393,20 +1398,20 @@ func (h *AdminHandler) SettingsAccountSubmit(w http.ResponseWriter, r *http.Requ
 	}
 
 	if !currentOK {
-		h.render(w, "base", PageData{Page: "settings-account", FlashMessage: t("flash_pw_wrong"), FlashType: "error"})
+		h.render(w, r, "base", PageData{Page: "settings-account", FlashMessage: t("flash_pw_wrong"), FlashType: "error"})
 		return
 	}
 	if newPw != confirmPw {
-		h.render(w, "base", PageData{Page: "settings-account", FlashMessage: t("flash_pw_mismatch"), FlashType: "error"})
+		h.render(w, r, "base", PageData{Page: "settings-account", FlashMessage: t("flash_pw_mismatch"), FlashType: "error"})
 		return
 	}
 	if len(newPw) < 4 {
-		h.render(w, "base", PageData{Page: "settings-account", FlashMessage: t("flash_pw_too_short"), FlashType: "error"})
+		h.render(w, r, "base", PageData{Page: "settings-account", FlashMessage: t("flash_pw_too_short"), FlashType: "error"})
 		return
 	}
 
 	h.store.SetAdminPasswordHash(r.Context(), HashPassword(newPw))
-	h.render(w, "base", PageData{Page: "settings-account", FlashMessage: t("flash_pw_changed"), FlashType: "success"})
+	h.render(w, r, "base", PageData{Page: "settings-account", FlashMessage: t("flash_pw_changed"), FlashType: "success"})
 }
 
 // === Helpers ===

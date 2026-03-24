@@ -7,6 +7,7 @@
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 max-w-3xl overflow-hidden">
   <div class="p-6">
     <form method="post" action="/admin/clusters/new">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
       <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "sentinel_connection" }}</div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>

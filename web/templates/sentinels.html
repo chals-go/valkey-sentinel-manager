@@ -26,6 +26,7 @@
     </div>
     <div class="flex flex-wrap gap-2">
       <form method="post" action="/admin/sentinels/{{ $grpName }}/toggle-alert" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
         {{ if index $.Data.AlertSettings $grpName }}
         <input type="hidden" name="enabled" value="false">
         <button type="submit" class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors">
@@ -69,6 +70,7 @@
           </td>
           <td class="px-6 py-4 border-b border-gray-50 text-right">
             <form method="post" action="/admin/sentinels/{{ .SentinelNodeName }}/delete-node" class="inline" onsubmit="return confirm('{{ .SentinelNodeName }} — {{ t "delete_node_confirm" }}')">
+              <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
               <button type="submit" class="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors">{{ t "delete" }}</button>
             </form>
           </td>
@@ -87,6 +89,7 @@
       <button onclick="closeModal('modal-add-node-{{ $grpName }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
     </div>
     <form method="post" action="/admin/sentinels/{{ $grpName }}/add-node">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
       <div class="mb-4">
         <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "node_name" }}</label>
         <input type="text" name="sentinel_node_name" placeholder="sentinel-04" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
@@ -114,6 +117,7 @@
     <div class="flex justify-end gap-3">
       <button onclick="closeModal('modal-delete-group-{{ $grpName }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
       <form method="post" action="/admin/sentinels/{{ $grpName }}/delete-cluster" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
         <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">{{ t "delete" }}</button>
       </form>
     </div>
@@ -128,6 +132,7 @@
       <button onclick="closeModal('modal-edit-group-{{ $grpName }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
     </div>
     <form method="post" action="/admin/sentinels/{{ $grpName }}/edit">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
       {{ range $nodes }}
       <div class="grid grid-cols-1 md:grid-cols-[1.5fr_2fr_100px] gap-4 mb-3">
         <div>
@@ -179,6 +184,7 @@
       <button onclick="closeModal('modal-sentinel-new')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
     </div>
     <form method="post" action="/admin/sentinels/new-cluster">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "group_name" }}</label>

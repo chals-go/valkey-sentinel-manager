@@ -7,6 +7,7 @@
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
   <div class="p-6 max-w-xl">
     <form method="post" action="/admin/slack-webhook">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
       <div class="mb-4">
         <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "webhook_url" }}</label>
         <input type="text" name="slack_webhook_url" value="{{ with .Data }}{{ .WebhookURL }}{{ end }}" placeholder="https://hooks.slack.com/services/T.../B.../xxx" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
@@ -23,6 +24,7 @@
     {{ if and .Data .Data.WebhookURL }}
     <div class="flex gap-2 mt-6 pt-6 border-t border-gray-100">
       <form method="post" action="/admin/slack-webhook/test" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
         <button type="submit" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "test_send" }}</button>
       </form>
       <button class="px-3 py-2 bg-red-50 text-red-600 text-xs font-medium rounded-lg border border-red-200 hover:bg-red-100" onclick="openModal('modal-delete-webhook')">{{ t "delete" }}</button>
@@ -43,6 +45,7 @@
     <div class="flex justify-end gap-3">
       <button onclick="closeModal('modal-delete-webhook')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
       <form method="post" action="/admin/slack-webhook/delete" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
         <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">{{ t "delete" }}</button>
       </form>
     </div>

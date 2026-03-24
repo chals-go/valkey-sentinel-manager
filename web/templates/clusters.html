@@ -289,6 +289,7 @@
       {{ if $c.ReplicaDNS }}<div class="text-slate-500">Replica DNS</div><div class="font-mono text-slate-900 text-sm">{{ $c.ReplicaDNS.RecordName }}.{{ $c.ReplicaDNS.Zone }}</div>{{ end }}
     </div>
     <form method="post" action="/admin/clusters/{{ $c.MasterName }}/edit">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
       <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "dns_ttl" }}</div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
         <div>
@@ -327,7 +328,10 @@
     <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong> — {{ t "failover_confirm" }}<br><span class="text-amber-600 font-medium">{{ t "primary_changes_immediately" }}</span> {{ t "continue_question" }}</p>
     <div class="flex justify-end gap-3">
       <button onclick="closeModal('modal-failover-{{ $c.MasterName }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
-      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/test-failover" class="m-0"><button type="submit" class="px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600">{{ t "run_failover" }}</button></form>
+      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/test-failover" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+        <button type="submit" class="px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600">{{ t "run_failover" }}</button>
+      </form>
     </div>
   </div>
 </div>
@@ -342,7 +346,10 @@
     <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong> {{ t "delete_confirm" }}<br>{{ t "delete_sentinel_dns" }}</p>
     <div class="flex justify-end gap-3">
       <button onclick="closeModal('modal-delete-{{ $c.MasterName }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
-      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/delete" class="m-0"><button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">{{ t "delete" }}</button></form>
+      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/delete" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+        <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">{{ t "delete" }}</button>
+      </form>
     </div>
   </div>
 </div>
@@ -357,7 +364,10 @@
     <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong><br>{{ t "sync_dns_desc" }}</p>
     <div class="flex justify-end gap-3">
       <button onclick="closeModal('modal-sync-dns-{{ $c.MasterName }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
-      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/sync-dns" class="m-0"><button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "sync_dns" }}</button></form>
+      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/sync-dns" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "sync_dns" }}</button>
+      </form>
     </div>
   </div>
 </div>
@@ -372,7 +382,10 @@
     <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong><br><br>{{ t "pause_desc" }}</p>
     <div class="flex justify-end gap-3">
       <button onclick="closeModal('modal-pause-{{ $c.MasterName }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
-      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/pause" class="m-0"><button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">{{ t "pause" }}</button></form>
+      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/pause" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">{{ t "pause" }}</button>
+      </form>
     </div>
   </div>
 </div>
@@ -387,7 +400,10 @@
     <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong><br><br>{{ t "resume_desc" }}</p>
     <div class="flex justify-end gap-3">
       <button onclick="closeModal('modal-resume-{{ $c.MasterName }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
-      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/resume" class="m-0"><button type="submit" class="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700">{{ t "resume" }}</button></form>
+      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/resume" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+        <button type="submit" class="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700">{{ t "resume" }}</button>
+      </form>
     </div>
   </div>
 </div>
@@ -411,6 +427,7 @@
       <button onclick="closeModal('modal-cluster-new')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
     </div>
     <form method="post" action="/admin/clusters/new">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
       <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "sentinel_connection" }}</div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
         <div>

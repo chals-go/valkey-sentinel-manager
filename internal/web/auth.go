@@ -31,6 +31,7 @@ type SessionManager struct {
 
 	mu            sync.Mutex
 	sessions      map[string]time.Time                // sessionID -> expiresAt
+	csrfTokens    map[string]string                   // sessionID -> CSRF token
 	loginAttempts map[string]loginAttemptRecord        // IP -> record
 }
 
@@ -45,6 +46,7 @@ func NewSessionManager(s store.Store, secureCookie bool) *SessionManager {
 		store:         s,
 		secureCookie:  secureCookie,
 		sessions:      make(map[string]time.Time),
+		csrfTokens:    make(map[string]string),
 		loginAttempts: make(map[string]loginAttemptRecord),
 	}
 }
@@ -127,6 +129,7 @@ func (sm *SessionManager) CreateSession() string {
 	id := hex.EncodeToString(b)
 	sm.mu.Lock()
 	sm.sessions[id] = time.Now().Add(sessionTTL)
+	sm.csrfTokens[id] = generateCSRFToken()
 	sm.cleanupLocked()
 	sm.mu.Unlock()
 	return id
@@ -180,6 +183,7 @@ func (sm *SessionManager) DestroySession(r *http.Request) {
 	}
 	sm.mu.Lock()
 	delete(sm.sessions, cookie.Value)
+	delete(sm.csrfTokens, cookie.Value)
 	sm.mu.Unlock()
 }
 
@@ -199,8 +203,21 @@ func (sm *SessionManager) cleanupLocked() {
 	for id, exp := range sm.sessions {
 		if now.After(exp) {
 			delete(sm.sessions, id)
+			delete(sm.csrfTokens, id)
 		}
 	}
+}
+
+// getOrCreateCSRFToken은 세션에 연결된 CSRF 토큰을 반환하거나, 없으면 새로 생성한다.
+func (sm *SessionManager) getOrCreateCSRFToken(sessionID string) string {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	if token, ok := sm.csrfTokens[sessionID]; ok {
+		return token
+	}
+	token := generateCSRFToken()
+	sm.csrfTokens[sessionID] = token
+	return token
 }
 
 // ChangePassword는 새 관리자 비밀번호를 해시하여 저장소에 저장한다.
