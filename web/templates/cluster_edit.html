@@ -1,0 +1,128 @@
+{{ define "cluster-edit-content" }}
+<div class="mb-8">
+  <h1 class="text-2xl font-bold text-slate-900">{{ t "edit_replication_group" }}</h1>
+  <p class="text-sm text-slate-500 mt-1"><strong class="font-mono">{{ .Data.Cluster.GroupName }}</strong></p>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 max-w-3xl overflow-hidden">
+  <div class="p-6">
+    <form method="post" action="/admin/clusters/{{ .Data.Cluster.MasterName }}/edit">
+
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "sentinel_connection" }}</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "sentinel_cluster" }}</label>
+          <input type="text" value="{{ .Data.SentinelCluster }}" readonly class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-slate-400 cursor-not-allowed">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Master Name</label>
+          <input type="text" name="master_name" required value="{{ .Data.Cluster.MasterName }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+      </div>
+
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "valkey_primary" }}</div>
+      <div class="grid grid-cols-1 md:grid-cols-[2fr_100px_100px] gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "primary_ip" }}</label>
+          <input type="text" name="primary_ip" required value="{{ .Data.PrimaryIP }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "port" }}</label>
+          <input type="number" name="primary_port" value="{{ .Data.PrimaryPort }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "quorum" }}</label>
+          <input type="number" name="quorum_threshold" value="{{ .Data.Cluster.QuorumThreshold }}" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+      </div>
+      <div class="mb-6 max-w-xs">
+        <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "redis_password_optional" }}</label>
+        <input type="password" name="redis_password" placeholder="{{ if .Data.Cluster.RedisPassword }}(unchanged){{ else }}requirepass{{ end }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+      </div>
+
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">Primary DNS</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "dns_provider" }}</label>
+          <select id="dns_provider" name="dns_provider" required onchange="updateDnsPreview()" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+            <option value="">{{ t "select" }}</option>
+            {{ range $name, $zone := .Data.DNSProviders }}
+            <option value="{{ $name }}" data-zone="{{ $zone }}" {{ if eq $name $.Data.Cluster.DNSProvider }}selected{{ end }}>{{ $name }} ({{ $zone }})</option>
+            {{ end }}
+          </select>
+        </div>
+        <div class="max-w-[120px]">
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "dns_ttl_sec" }}</label>
+          <input type="number" name="dns_ttl" value="{{ .Data.Cluster.PrimaryDNS.TTL }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+      </div>
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "dns_record" }}</label>
+        <div class="flex items-center gap-1">
+          <input type="text" id="primary_record" name="primary_record" required value="{{ .Data.Cluster.PrimaryDNS.RecordName }}" class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm" oninput="updateDnsPreview()">
+          <span id="dns-zone-suffix" class="font-mono text-sm text-slate-400">.</span>
+        </div>
+      </div>
+
+      {{ if .Data.Cluster.ReplicaDNS }}
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">Replica DNS</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "dns_record" }}</label>
+          <input type="text" name="replica_domain" value="{{ .Data.Cluster.ReplicaDNS.RecordName }}" class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        </div>
+        <div class="max-w-[120px]">
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "dns_ttl_sec" }}</label>
+          <input type="number" name="replica_ttl" value="{{ .Data.Cluster.ReplicaDNS.TTL }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+      </div>
+      {{ end }}
+
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "sentinel_settings" }}</div>
+      <p class="text-xs text-slate-400 mb-3">{{ t "sentinel_settings_desc" }}</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "down_after_ms" }}</label>
+          <input type="number" name="down_after_ms" value="{{ .Data.DownAfterMs }}" min="1000" step="1000" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "failover_timeout" }}</label>
+          <input type="number" name="failover_timeout" value="{{ .Data.FailoverTimeout }}" min="5000" step="1000" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+      </div>
+
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "options" }}</div>
+      <div class="mb-4">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" name="multi_replica" {{ if .Data.Cluster.MultiReplica }}checked{{ end }} class="w-4 h-4 accent-indigo-600 rounded">
+          <span class="text-sm text-slate-700">{{ t "multi_replica" }}</span>
+        </label>
+        <p class="text-xs text-slate-400 mt-1 ml-7">{{ t "multi_replica_desc" }}</p>
+      </div>
+      <div class="mb-6">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" name="quorum_mode" {{ if .Data.Cluster.QuorumMode }}checked{{ end }} class="w-4 h-4 accent-indigo-600 rounded">
+          <span class="text-sm text-slate-700">{{ t "quorum_mode" }}</span>
+        </label>
+        <p class="text-xs text-slate-400 mt-1 ml-7">{{ t "quorum_mode_desc" }}</p>
+      </div>
+
+      <div class="flex gap-3">
+        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "save" }}</button>
+        <a href="/admin/clusters" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function updateDnsPreview() {
+    var select = document.getElementById('dns_provider');
+    var suffix = document.getElementById('dns-zone-suffix');
+    var opt = select.options[select.selectedIndex];
+    var zone = opt ? opt.getAttribute('data-zone') || '' : '';
+    suffix.textContent = zone ? '.' + zone : '.';
+}
+document.addEventListener('DOMContentLoaded', updateDnsPreview);
+</script>
+{{ end }}

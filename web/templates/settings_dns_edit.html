@@ -1,0 +1,99 @@
+{{ define "settings-dns-edit-content" }}
+<div class="mb-8">
+  <h1 class="text-2xl font-bold text-slate-900">{{ t "edit_dns_provider" }}</h1>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 max-w-3xl overflow-hidden">
+  <div class="p-6">
+    <form method="post" action="/admin/settings/dns/edit/{{ .Data.ProviderName }}">
+      <input type="hidden" name="provider_type" value="{{ .Data.ProviderType }}">
+
+      {{ if eq .Data.ProviderType "route53" }}
+      <div class="space-y-4 mb-6">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_id" }}</label>
+          <input type="text" name="r53_zone_id" value="{{ .Data.ZoneID }}" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_name" }}</label>
+          <input type="text" name="r53_zone_name" value="{{ .Data.ZoneName }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "region" }}</label>
+          <input type="text" name="r53_region" value="{{ .Data.Region }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "access_key" }}</label>
+          <input type="text" name="r53_access_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none" placeholder="Leave blank to keep current">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "secret_key" }}</label>
+          <input type="password" name="r53_secret_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none" placeholder="Leave blank to keep current">
+        </div>
+      </div>
+      {{ end }}
+
+      {{ if eq .Data.ProviderType "azure" }}
+      <div class="space-y-4 mb-6">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "subscription_id" }}</label>
+          <input type="text" name="az_subscription_id" value="{{ .Data.SubscriptionID }}" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "resource_group" }}</label>
+          <input type="text" name="az_resource_group" value="{{ .Data.ResourceGroup }}" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_name" }}</label>
+          <input type="text" name="az_zone_name" value="{{ .Data.ZoneName }}" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "auth_type" }}</label>
+          <select name="az_auth_type" id="edit-az-auth" onchange="toggleEditAzureAuth(this.value)" class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+            <option value="system_identity" {{ if eq .Data.AuthType "system_identity" }}selected{{ end }}>{{ t "system_identity" }}</option>
+            <option value="user_identity" {{ if eq .Data.AuthType "user_identity" }}selected{{ end }}>{{ t "user_identity" }}</option>
+            <option value="service_principal" {{ if eq .Data.AuthType "service_principal" }}selected{{ end }}>{{ t "service_principal" }}</option>
+          </select>
+        </div>
+        <div id="edit-az-credential-fields" style="{{ if eq .Data.AuthType "system_identity" }}display:none{{ end }}">
+          <div class="mb-4 max-w-sm"><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "client_id" }}</label><input type="text" name="az_client_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div id="edit-az-sp-extra" style="{{ if ne .Data.AuthType "service_principal" }}display:none{{ end }}" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "tenant_id" }}</label><input type="text" name="az_tenant_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+            <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "client_secret" }}</label><input type="password" name="az_client_secret" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none" placeholder="Leave blank to keep current"></div>
+          </div>
+        </div>
+      </div>
+      <script>
+      function toggleEditAzureAuth(authType) {
+          var show = authType === 'user_identity' || authType === 'service_principal';
+          document.getElementById('edit-az-credential-fields').style.display = show ? '' : 'none';
+          document.getElementById('edit-az-sp-extra').style.display = authType === 'service_principal' ? '' : 'none';
+      }
+      </script>
+      {{ end }}
+
+      {{ if eq .Data.ProviderType "bind" }}
+      <div class="space-y-4 mb-6">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "api_url" }}</label>
+          <input type="text" name="bind_api_url" value="{{ .Data.APIURL }}" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_name" }}</label>
+          <input type="text" name="bind_zone_name" value="{{ .Data.ZoneName }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "api_key_optional" }}</label>
+          <input type="password" name="bind_api_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none" placeholder="Leave blank to keep current">
+        </div>
+      </div>
+      {{ end }}
+
+      <div class="flex gap-3">
+        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "save" }}</button>
+        <a href="/admin/settings/dns" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</a>
+      </div>
+    </form>
+  </div>
+</div>
+{{ end }}

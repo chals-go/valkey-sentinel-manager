@@ -1,0 +1,184 @@
+{{ define "dashboard-content" }}
+<div class="mb-8">
+  <h1 class="text-2xl font-bold text-slate-900">{{ t "dashboard" }}</h1>
+  <p class="text-sm text-slate-500 mt-1">{{ t "dashboard_desc" }}</p>
+</div>
+
+<!-- Stat cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+  <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+    <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-violet-100 text-violet-600">
+      <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+    </div>
+    <div class="text-3xl font-bold text-slate-900">{{ if .Data.Clusters }}{{ len .Data.Clusters }}{{ else }}0{{ end }}</div>
+    <div class="text-sm text-slate-500 mt-1">{{ t "replication_group" }}</div>
+  </div>
+  <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+    <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-blue-100 text-blue-600">
+      <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/></svg>
+    </div>
+    <div class="text-3xl font-bold text-slate-900">{{ if .Data.Sentinels }}{{ len .Data.Sentinels }}{{ else }}0{{ end }}</div>
+    <div class="text-sm text-slate-500 mt-1">{{ t "registered_sentinel" }}</div>
+  </div>
+  <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+    <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4 {{ if .Data.RecentEventCount }}bg-amber-100 text-amber-600{{ else }}bg-emerald-100 text-emerald-600{{ end }}">
+      <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </div>
+    <div class="text-3xl font-bold text-slate-900">{{ .Data.RecentEventCount }}</div>
+    <div class="text-sm text-slate-500 mt-1">{{ t "recent_events_1h" }}</div>
+  </div>
+  <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+    <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4 {{ if eq .Data.StoreType "VALKEY" }}bg-emerald-100 text-emerald-600{{ else }}bg-amber-100 text-amber-600{{ end }}">
+      <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375"/></svg>
+    </div>
+    <div class="text-2xl font-bold text-slate-900">{{ .Data.StoreType }}</div>
+    <div class="text-sm text-slate-500 mt-1">{{ t "storage" }}</div>
+  </div>
+</div>
+
+<!-- Replication Group Status -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
+  <div class="px-6 py-4 border-b border-gray-100">
+    <h2 class="font-semibold text-slate-900">{{ t "replication_group_status" }}</h2>
+  </div>
+  {{ if .Data.Clusters }}
+  <div>
+    <table class="w-full">
+      <thead>
+        <tr>
+          <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "name" }}</th>
+          <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">Primary</th>
+          <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">Replica</th>
+          <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">DNS</th>
+          <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">Sentinel</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $c := .Data.Clusters }}
+        {{ $detail := index $.Data.LiveInfo $c.MasterName }}
+        <tr class="hover:bg-gray-50/50 transition-colors">
+          <td class="px-6 py-3 border-b border-gray-50">
+            <a href="/admin/clusters" class="text-sm font-medium text-slate-900 hover:text-indigo-600">{{ $c.MasterName }}</a>
+            {{ if $c.IsPaused }}
+            <span class="ml-1 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ t "paused" }}</span>
+            {{ else if not $detail }}
+            <span class="ml-1 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ t "unhealthy" }}</span>
+            {{ else }}
+            <span class="ml-1 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "healthy" }}</span>
+            {{ end }}
+          </td>
+          <td class="px-6 py-3 border-b border-gray-50 text-sm">
+            {{ if $detail }}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-slate-100 text-slate-700 border border-slate-200">{{ $detail.MasterIP }}:{{ $detail.MasterPort }}</span>
+            {{ if eq $detail.MasterStatus "ok" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "ok" }}</span>
+            {{ else }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ $detail.MasterStatus }}</span>{{ end }}
+            {{ else }}<span class="text-slate-300">—</span>{{ end }}
+          </td>
+          <td class="px-6 py-3 border-b border-gray-50 text-sm">
+            {{ if and $detail $detail.Slaves }}
+              {{ range $detail.Slaves }}
+              <div class="{{ if not (eq .IP "") }}mt-1 first:mt-0{{ end }}">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-slate-100 text-slate-700 border border-slate-200">{{ .IP }}:{{ .Port }}</span>
+                {{ if eq .Status "ok" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "ok" }}</span>
+                {{ else }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ .Status }}</span>{{ end }}
+              </div>
+              {{ end }}
+            {{ else if $detail }}<span class="text-slate-300">{{ t "none" }}</span>
+            {{ else }}<span class="text-slate-300">—</span>{{ end }}
+          </td>
+          <td class="px-6 py-3 border-b border-gray-50">
+            <div class="font-mono text-xs text-slate-600">{{ $c.PrimaryDNS.RecordName }}.{{ $c.PrimaryDNS.Zone }}</div>
+            {{ if $c.ReplicaDNS }}
+            <div class="font-mono text-xs text-slate-600 mt-0.5">{{ $c.ReplicaDNS.RecordName }}.{{ $c.ReplicaDNS.Zone }}</div>
+            {{ end }}
+          </td>
+          <td class="px-6 py-3 border-b border-gray-50">
+            {{ if $detail }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "connected" }}</span>
+            {{ else }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ t "connection_failed" }}</span>{{ end }}
+          </td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+  {{ if gt .Data.ClusterTotalPages 1 }}
+  {{ $cp := .Data.ClusterPage }}{{ $ctp := .Data.ClusterTotalPages }}{{ $ep := .Data.EventPage }}
+  {{ $cstart := sub $cp 2 }}{{ if lt $cstart 1 }}{{ $cstart = 1 }}{{ end }}
+  {{ $cend := add $cstart 4 }}{{ if gt $cend $ctp }}{{ $cend = $ctp }}{{ end }}
+  {{ $cstart2 := sub $cend 4 }}{{ if gt $cstart2 1 }}{{ $cstart = $cstart2 }}{{ end }}
+  <div class="px-6 py-3 flex justify-center gap-1">
+    {{ if gt $cp 1 }}<a href="/admin/?cp={{ sub $cp 1 }}&ep={{ $ep }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></a>
+    {{ else }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></span>{{ end }}
+    {{ if gt $cstart 1 }}<a href="/admin/?cp=1&ep={{ $ep }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50">1</a>{{ if gt $cstart 2 }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 text-sm text-slate-400">...</span>{{ end }}{{ end }}
+    {{ range $p := seq $cstart $cend }}{{ if eq $p $cp }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm bg-indigo-600 text-white border border-indigo-600 font-medium">{{ $p }}</span>
+    {{ else }}<a href="/admin/?cp={{ $p }}&ep={{ $ep }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50">{{ $p }}</a>{{ end }}{{ end }}
+    {{ if lt $cend $ctp }}{{ if lt $cend (sub $ctp 1) }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 text-sm text-slate-400">...</span>{{ end }}<a href="/admin/?cp={{ $ctp }}&ep={{ $ep }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50">{{ $ctp }}</a>{{ end }}
+    {{ if lt $cp $ctp }}<a href="/admin/?cp={{ add $cp 1 }}&ep={{ $ep }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
+    {{ else }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>{{ end }}
+  </div>
+  {{ end }}
+  {{ else }}
+  <div class="text-center py-12 text-slate-400">{{ t "no_replication_group" }}</div>
+  {{ end }}
+</div>
+
+<!-- Recent Events -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100">
+  <div class="px-6 py-4 border-b border-gray-100">
+    <h2 class="font-semibold text-slate-900">{{ t "recent_events" }}</h2>
+  </div>
+  {{ if .Data.Events }}
+  <div>
+    <table class="w-full">
+      <thead>
+        <tr>
+          <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "time" }}</th>
+          <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "type" }}</th>
+          <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "name" }}</th>
+          <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">Sentinel</th>
+          <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "detail" }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range .Data.Events }}
+        <tr class="hover:bg-gray-50/50 transition-colors">
+          <td class="px-6 py-3 border-b border-gray-50 text-xs text-slate-400">{{ datetime .Timestamp }}</td>
+          <td class="px-6 py-3 border-b border-gray-50">
+            {{ if eq (printf "%s" .EventType) "failover" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ t "failover_event" }}</span>
+            {{ else if eq (printf "%s" .EventType) "replica_down" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ t "replica_down" }}</span>
+            {{ else if eq (printf "%s" .EventType) "replica_up" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "replica_up" }}</span>
+            {{ else if eq (printf "%s" .EventType) "sentinel_down" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ t "sentinel_down" }}</span>
+            {{ else if eq (printf "%s" .EventType) "sentinel_up" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "sentinel_up" }}</span>
+            {{ else }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>{{ .EventType }}</span>{{ end }}
+          </td>
+          <td class="px-6 py-3 border-b border-gray-50 text-sm text-slate-600">{{ .MasterName }}</td>
+          <td class="px-6 py-3 border-b border-gray-50 text-sm font-mono text-slate-600">{{ .SentinelNodeName }}</td>
+          <td class="px-6 py-3 border-b border-gray-50 text-sm font-mono text-slate-600">
+            {{ if eq (printf "%s" .EventType) "failover" }}{{ .FromIP }} → {{ .ToIP }}{{ else }}{{ .FromIP }}:{{ .FromPort }}{{ end }}
+          </td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+  {{ if gt .Data.EventTotalPages 1 }}
+  {{ $ep2 := .Data.EventPage }}{{ $etp := .Data.EventTotalPages }}{{ $cp2 := .Data.ClusterPage }}
+  {{ $estart := sub $ep2 2 }}{{ if lt $estart 1 }}{{ $estart = 1 }}{{ end }}
+  {{ $eend := add $estart 4 }}{{ if gt $eend $etp }}{{ $eend = $etp }}{{ end }}
+  {{ $estart2 := sub $eend 4 }}{{ if gt $estart2 1 }}{{ $estart = $estart2 }}{{ end }}
+  <div class="px-6 py-3 flex justify-center gap-1">
+    {{ if gt $ep2 1 }}<a href="/admin/?cp={{ $cp2 }}&ep={{ sub $ep2 1 }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></a>
+    {{ else }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></span>{{ end }}
+    {{ if gt $estart 1 }}<a href="/admin/?cp={{ $cp2 }}&ep=1" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50">1</a>{{ if gt $estart 2 }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 text-sm text-slate-400">...</span>{{ end }}{{ end }}
+    {{ range $p := seq $estart $eend }}{{ if eq $p $ep2 }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm bg-indigo-600 text-white border border-indigo-600 font-medium">{{ $p }}</span>
+    {{ else }}<a href="/admin/?cp={{ $cp2 }}&ep={{ $p }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50">{{ $p }}</a>{{ end }}{{ end }}
+    {{ if lt $eend $etp }}{{ if lt $eend (sub $etp 1) }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 text-sm text-slate-400">...</span>{{ end }}<a href="/admin/?cp={{ $cp2 }}&ep={{ $etp }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50">{{ $etp }}</a>{{ end }}
+    {{ if lt $ep2 $etp }}<a href="/admin/?cp={{ $cp2 }}&ep={{ add $ep2 1 }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
+    {{ else }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>{{ end }}
+  </div>
+  {{ end }}
+  {{ else }}
+  <div class="text-center py-12 text-slate-400">{{ t "no_recent_events" }}</div>
+  {{ end }}
+</div>
+{{ end }}

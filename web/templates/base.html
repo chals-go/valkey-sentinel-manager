@@ -1,0 +1,140 @@
+{{ define "base" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ block "title" . }}Sentinel Manager{{ end }}</title>
+  <link rel="stylesheet" href="/static/css/tailwind.min.css">
+  <link rel="stylesheet" href="/static/css/custom.css">
+</head>
+<body class="bg-gray-50 font-sans">
+
+{{ if not .HideSidebar }}
+<aside class="sidebar bg-gradient-to-b from-slate-800 to-slate-900 flex flex-col px-4 py-6">
+  <div class="px-3 mb-8">
+    <h1 class="text-lg font-bold tracking-tight">
+      <span class="text-indigo-400">Sentinel</span>
+      <span class="text-white">Manager</span>
+    </h1>
+    <p class="text-[11px] text-slate-500 mt-0.5">Valkey Sentinel DNS Failover</p>
+  </div>
+
+  <nav class="flex-1 flex flex-col gap-0.5">
+    <div class="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{{ t "monitoring" }}</div>
+
+    <a href="/admin/"
+       class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+              {{ if eq .Page "dashboard" }}bg-indigo-600/20 text-white font-medium{{ else }}text-slate-400 hover:bg-slate-700/50 hover:text-white{{ end }}">
+      {{ template "icon-dashboard" }} {{ t "dashboard" }}
+    </a>
+    <a href="/admin/clusters"
+       class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+              {{ if eq .Page "clusters" }}bg-indigo-600/20 text-white font-medium{{ else }}text-slate-400 hover:bg-slate-700/50 hover:text-white{{ end }}">
+      {{ template "icon-replication" }} {{ t "replication_group" }}
+    </a>
+    <a href="/admin/sentinels"
+       class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+              {{ if eq .Page "sentinels" }}bg-indigo-600/20 text-white font-medium{{ else }}text-slate-400 hover:bg-slate-700/50 hover:text-white{{ end }}">
+      {{ template "icon-sentinel" }} {{ t "sentinel_cluster" }}
+    </a>
+    <a href="/admin/events"
+       class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+              {{ if eq .Page "events" }}bg-indigo-600/20 text-white font-medium{{ else }}text-slate-400 hover:bg-slate-700/50 hover:text-white{{ end }}">
+      {{ template "icon-events" }} {{ t "event_log" }}
+    </a>
+
+    <div class="px-3 mt-6 mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{{ t "settings" }}</div>
+
+    <a href="/admin/settings/server"
+       class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+              {{ if eq .Page "settings-server" }}bg-indigo-600/20 text-white font-medium{{ else }}text-slate-400 hover:bg-slate-700/50 hover:text-white{{ end }}">
+      {{ template "icon-server" }} {{ t "server_settings" }}
+    </a>
+    <a href="/admin/settings/dns"
+       class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+              {{ if eq .Page "settings-dns" }}bg-indigo-600/20 text-white font-medium{{ else }}text-slate-400 hover:bg-slate-700/50 hover:text-white{{ end }}">
+      {{ template "icon-dns" }} {{ t "dns_provider" }}
+    </a>
+    <a href="/admin/settings/token"
+       class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+              {{ if eq .Page "settings-token" }}bg-indigo-600/20 text-white font-medium{{ else }}text-slate-400 hover:bg-slate-700/50 hover:text-white{{ end }}">
+      {{ template "icon-token" }} {{ t "api_token" }}
+    </a>
+    <a href="/admin/settings/slack"
+       class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+              {{ if eq .Page "settings-slack" }}bg-indigo-600/20 text-white font-medium{{ else }}text-slate-400 hover:bg-slate-700/50 hover:text-white{{ end }}">
+      {{ template "icon-slack" }} {{ t "notification" }}
+    </a>
+
+    <div class="px-3 mt-6 mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{{ t "account" }}</div>
+
+    <a href="/admin/settings/account"
+       class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+              {{ if eq .Page "settings-account" }}bg-indigo-600/20 text-white font-medium{{ else }}text-slate-400 hover:bg-slate-700/50 hover:text-white{{ end }}">
+      {{ template "icon-account" }} {{ t "account_mgmt" }}
+    </a>
+  </nav>
+
+  <div class="pt-4 border-t border-slate-700/50">
+    <form method="post" action="/admin/logout" class="m-0">
+      <button type="submit" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-700/50 hover:text-white transition-colors w-full">
+        {{ template "icon-logout" }} {{ t "logout" }}
+      </button>
+    </form>
+  </div>
+</aside>
+
+<main class="main-content min-h-screen p-8">
+  {{ if .FlashMessage }}
+  <div class="mb-6 px-4 py-3 rounded-xl text-sm flex items-center gap-2
+    {{ if eq .FlashType "error" }}bg-red-50 text-red-700 border border-red-200
+    {{ else }}bg-emerald-50 text-emerald-700 border border-emerald-200{{ end }}">
+    {{ .FlashMessage }}
+  </div>
+  {{ end }}
+
+  {{/* Auto Refresh control — monitoring pages only */}}
+  {{ if isMonitoringPage .Page }}
+  <div id="refresh-control" class="flex justify-end mb-2">
+    <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm">
+      <span id="refresh-dot" class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+      <select id="refresh-select" onchange="setRefreshInterval(parseInt(this.value))"
+              class="text-xs bg-transparent border-none outline-none text-slate-600 cursor-pointer pr-1">
+        <option value="0">{{ t "refresh_off" }}</option>
+        <option value="5" selected>5s</option>
+        <option value="10">10s</option>
+        <option value="30">30s</option>
+        <option value="60">60s</option>
+      </select>
+      <button id="refresh-toggle" onclick="if(autoRefreshTimer){stopAutoRefresh()}else{setRefreshInterval(parseInt(document.getElementById('refresh-select').value)||5)}"
+              class="px-2 py-1 text-xs font-medium rounded-md bg-gray-100 text-gray-500 cursor-pointer">OFF</button>
+    </div>
+  </div>
+  {{ end }}
+{{ end }}
+
+{{ if eq .Page "login" }}{{ template "login-content" . }}
+{{ else if eq .Page "dashboard" }}{{ template "dashboard-content" . }}
+{{ else if eq .Page "clusters" }}{{ template "clusters-content" . }}
+{{ else if eq .Page "sentinels" }}{{ template "sentinels-content" . }}
+{{ else if eq .Page "events" }}{{ template "events-content" . }}
+{{ else if eq .Page "settings-server" }}{{ template "settings-server-content" . }}
+{{ else if eq .Page "settings-dns" }}{{ template "settings-dns-content" . }}
+{{ else if eq .Page "settings-token" }}{{ template "settings-token-content" . }}
+{{ else if eq .Page "settings-slack" }}{{ template "settings-slack-content" . }}
+{{ else if eq .Page "settings-account" }}{{ template "settings-account-content" . }}
+{{ else if eq .Page "cluster-form" }}{{ template "cluster-form-content" . }}
+{{ else if eq .Page "cluster-edit" }}{{ template "cluster-edit-content" . }}
+{{ else if eq .Page "settings-dns-edit" }}{{ template "settings-dns-edit-content" . }}
+{{ end }}
+
+{{ if not .HideSidebar }}
+</main>
+{{ end }}
+
+<script src="/static/js/app.js"></script>
+{{ block "scripts" . }}{{ end }}
+</body>
+</html>
+{{ end }}

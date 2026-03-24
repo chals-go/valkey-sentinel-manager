@@ -1,0 +1,10 @@
+bin/
+.env
+config.yaml
+*.exe
+*.test
+*.out
+vendor/
+node_modules/
+package*.json
+.claude/

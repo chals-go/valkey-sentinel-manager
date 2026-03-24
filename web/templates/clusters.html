@@ -1,0 +1,492 @@
+{{ define "clusters-content" }}
+<div class="flex items-center justify-between mb-8">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900">Replication Group</h1>
+    <p class="text-sm text-slate-500 mt-1">{{ t "repl_desc" }}</p>
+  </div>
+  <div class="flex items-center gap-3">
+    <button onclick="copyAllGroups(this)" class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+      <span class="copy-icon">{{ template "icon-copy" }}</span>
+      <span class="check-icon hidden text-emerald-600">{{ template "icon-check" }}</span>
+      {{ t "copy_all" }}
+    </button>
+    <button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" onclick="openModal('modal-cluster-new')">+ {{ t "register_replication_group" }}</button>
+  </div>
+</div>
+
+{{ if .Data.Clusters }}
+<div class="bg-white rounded-xl shadow-sm border border-gray-100">
+  <table class="w-full">
+    <thead>
+      <tr>
+        <th class="bg-gray-50/80 w-8 px-4 py-3 border-b border-gray-200"></th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "name" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">Primary</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">Replica</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">DNS</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "status" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "actions" }}</th>
+      </tr>
+    </thead>
+    <tbody>
+    {{ $idx := 0 }}
+    {{ range $c := .Data.Clusters }}
+    {{ $idx = add $idx 1 }}
+    {{ $detail := index $.Data.LiveInfo $c.MasterName }}
+
+    <!-- Summary row -->
+    <tr id="cluster-{{ $idx }}" class="cursor-pointer hover:bg-gray-50/50 transition-colors" onclick="document.getElementById('detail-{{ $idx }}').toggleAttribute('open')">
+      <td class="px-4 py-4 border-b border-gray-50">
+        <svg class="w-4 h-4 text-slate-300 transition-transform duration-200 chevron-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+      </td>
+      {{ $primaryIP := $c.PrimaryIP }}{{ if $detail }}{{ $primaryIP = $detail.MasterIP }}{{ end }}
+      {{ $replicaIPStr := "" }}{{ if and $detail $detail.Slaves }}{{ range $i, $s := $detail.Slaves }}{{ if $i }}{{ $replicaIPStr = printf "%s, %s" $replicaIPStr $s.IP }}{{ else }}{{ $replicaIPStr = $s.IP }}{{ end }}{{ end }}{{ end }}
+      {{ $endpoint := printf "%s.%s" $c.PrimaryDNS.RecordName $c.PrimaryDNS.Zone }}{{ if $c.ReplicaDNS }}{{ $endpoint = printf "%s, %s.%s" $endpoint $c.ReplicaDNS.RecordName $c.ReplicaDNS.Zone }}{{ end }}
+      <td class="px-6 py-4 border-b border-gray-50" data-copy-row="{{ $c.MasterName }} | {{ $primaryIP }} | {{ $replicaIPStr }} | {{ $endpoint }}">
+        <div class="flex items-center gap-1.5">
+          <div>
+            <div class="text-sm font-medium text-slate-900">{{ $c.MasterName }}</div>
+          </div>
+          <button class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="{{ t "copy" }}" data-copy="{{ $c.MasterName }} | {{ $primaryIP }} | {{ $replicaIPStr }} | {{ $endpoint }}" onclick="event.stopPropagation(); copyToClipboard(this)">
+            <span class="copy-icon">{{ template "icon-copy" }}</span>
+            <span class="check-icon hidden text-emerald-600">{{ template "icon-check" }}</span>
+          </button>
+        </div>
+      </td>
+      <td class="px-6 py-4 border-b border-gray-50 text-sm">
+        {{ if $detail }}
+        <div class="flex items-center gap-1">
+          <span class="font-mono text-slate-600">{{ $detail.MasterIP }}</span>
+          {{ if eq $detail.MasterStatus "ok" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "healthy" }}</span>
+          {{ else }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ $detail.MasterStatus }}</span>{{ end }}
+        </div>
+        {{ else }}<span class="text-slate-300">—</span>{{ end }}
+      </td>
+      <td class="px-6 py-4 border-b border-gray-50 text-sm">
+        {{ if and $detail $detail.Slaves }}
+          {{ range $detail.Slaves }}
+          <div class="flex items-center gap-1 mt-1 first:mt-0">
+            <span class="font-mono text-slate-600">{{ .IP }}</span>
+            {{ if eq .Status "ok" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "healthy" }}</span>
+            {{ else }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ .Status }}</span>{{ end }}
+          </div>
+          {{ end }}
+        {{ else if $detail }}<span class="text-slate-300">{{ t "none" }}</span>
+        {{ else }}<span class="text-slate-300">—</span>{{ end }}
+      </td>
+      <td class="px-6 py-4 border-b border-gray-50">
+        <div class="font-mono text-xs text-slate-600">{{ $c.PrimaryDNS.RecordName }}.{{ $c.PrimaryDNS.Zone }}</div>
+        {{ if $c.ReplicaDNS }}
+        <div class="font-mono text-xs text-slate-600 mt-0.5">{{ $c.ReplicaDNS.RecordName }}.{{ $c.ReplicaDNS.Zone }}</div>
+        {{ end }}
+      </td>
+      <td class="px-6 py-4 border-b border-gray-50">
+        {{ if $c.IsPaused }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ t "paused" }}</span>
+        {{ else if not $detail }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ t "connection_failed" }}</span>
+        {{ else }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "healthy" }}</span>{{ end }}
+      </td>
+      <td class="px-6 py-4 border-b border-gray-50 text-right" onclick="event.stopPropagation()">
+        <div class="flex justify-end gap-1">
+          <button class="relative group p-2 text-slate-400 hover:text-slate-700 hover:bg-gray-100 rounded-lg transition-colors" onclick="openModal('modal-edit-{{ $c.MasterName }}')">
+            {{ template "icon-edit" }}
+            <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">{{ t "edit" }}</span>
+          </button>
+          {{ if $c.IsPaused }}
+          <button class="relative group p-2 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors" onclick="openModal('modal-resume-{{ $c.MasterName }}')">
+            {{ template "icon-play" }}
+            <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">{{ t "resume" }}</span>
+          </button>
+          {{ else }}
+          <button class="relative group p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" onclick="openModal('modal-pause-{{ $c.MasterName }}')">
+            {{ template "icon-pause" }}
+            <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">{{ t "pause" }}</span>
+          </button>
+          {{ end }}
+          <button class="relative group p-2 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors" onclick="openModal('modal-failover-{{ $c.MasterName }}')">
+            {{ template "icon-failover" }}
+            <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">{{ t "failover" }}</span>
+          </button>
+          <button class="relative group p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" onclick="openModal('modal-delete-{{ $c.MasterName }}')">
+            {{ template "icon-delete" }}
+            <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">{{ t "delete" }}</span>
+          </button>
+        </div>
+      </td>
+    </tr>
+
+    <!-- Detail expand row -->
+    <tr>
+      <td colspan="7" class="p-0">
+        <details id="detail-{{ $idx }}">
+          <summary class="hidden"></summary>
+          <div class="bg-gray-50/50 px-6 py-5 border-t border-gray-100">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {{ $dns := index $.Data.DNSRecords $c.MasterName }}
+              <!-- Primary card -->
+              <div class="bg-white rounded-xl border border-gray-200 p-5">
+                <div class="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider">Primary</div>
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-500">{{ t "dns_record" }}</span>
+                    <span class="font-mono text-sm text-slate-700">{{ $c.PrimaryDNS.RecordName }}.{{ $c.PrimaryDNS.Zone }}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-500">{{ t "dns_resolved_ip" }}</span>
+                    <div>
+                      {{ if and $dns (index $dns "primary_ips") }}
+                        {{ range index $dns "primary_ips" }}<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-slate-100 text-slate-700 border border-slate-200">{{ . }}</span> {{ end }}
+                      {{ else }}<span class="text-sm text-slate-300">—</span>{{ end }}
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-500">{{ t "sentinel_primary" }}</span>
+                    <div class="flex items-center gap-1">
+                      {{ if $detail }}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-slate-100 text-slate-700 border border-slate-200">{{ $detail.MasterIP }}:{{ $detail.MasterPort }}</span>
+                      {{ if eq $detail.MasterStatus "ok" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "healthy" }}</span>{{ end }}
+                      {{ else }}<span class="text-sm text-slate-300">—</span>{{ end }}
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-500">{{ t "dns_sentinel_match" }}</span>
+                    {{ if and $detail $dns (index $dns "primary_ips") }}
+                      {{ if sliceContains (index $dns "primary_ips") $detail.MasterIP }}
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "match" }}</span>
+                      {{ else }}
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ t "mismatch" }}</span>
+                      {{ end }}
+                    {{ else if $detail }}
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ t "mismatch" }}</span>
+                    {{ else }}
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ t "unknown" }}</span>
+                    {{ end }}
+                  </div>
+                </div>
+              </div>
+              <!-- Replica card -->
+              <div class="bg-white rounded-xl border border-gray-200 p-5">
+                <div class="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider">Replica</div>
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-500">{{ t "dns_record" }}</span>
+                    {{ if $c.ReplicaDNS }}<span class="font-mono text-sm text-slate-700">{{ $c.ReplicaDNS.RecordName }}.{{ $c.ReplicaDNS.Zone }}</span>
+                    {{ else }}<span class="text-sm text-slate-300">{{ t "not_set" }}</span>{{ end }}
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-500">{{ t "dns_resolved_ip" }}</span>
+                    <div>
+                      {{ if and $dns (index $dns "replica_ips") }}
+                        {{ range index $dns "replica_ips" }}<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-slate-100 text-slate-700 border border-slate-200">{{ . }}</span> {{ end }}
+                      {{ else }}<span class="text-sm text-slate-300">—</span>{{ end }}
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-500">{{ t "sentinel_replica" }}</span>
+                    <div class="flex items-center gap-1 flex-wrap">
+                      {{ if and $detail $detail.Slaves }}
+                        {{ range $detail.Slaves }}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-slate-100 text-slate-700 border border-slate-200">{{ .IP }}:{{ .Port }}</span>
+                        {{ if eq .Status "ok" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "healthy" }}</span>
+                        {{ else }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ .Status }}</span>{{ end }}
+                        {{ end }}
+                      {{ else if $detail }}<span class="text-sm text-slate-300">{{ t "none" }}</span>
+                      {{ else }}<span class="text-sm text-slate-300">—</span>{{ end }}
+                    </div>
+                  </div>
+                  {{ if $c.ReplicaDNS }}
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-500">{{ t "dns_sentinel_match" }}</span>
+                    {{ if and $detail $detail.Slaves $dns (index $dns "replica_ips") }}
+                      {{ $replicaIPs := index $dns "replica_ips" }}
+                      {{ $allMatch := true }}
+                      {{ range $detail.Slaves }}
+                        {{ if not (sliceContains $replicaIPs .IP) }}{{ $allMatch = false }}{{ end }}
+                      {{ end }}
+                      {{ if $allMatch }}
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "match" }}</span>
+                      {{ else }}
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ t "mismatch" }}</span>
+                      {{ end }}
+                    {{ else }}
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ t "unknown" }}</span>
+                    {{ end }}
+                  </div>
+                  {{ end }}
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 flex items-center gap-3">
+              <button onclick="openModal('modal-sync-dns-{{ $c.MasterName }}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors">
+                {{ template "icon-failover" }} {{ t "sync_dns" }}
+              </button>
+            </div>
+
+            <div class="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-sm text-slate-500">
+              <span>{{ t "dns_provider" }}: <strong class="text-slate-700">{{ $c.DNSProvider }}</strong></span>
+              <span>{{ t "quorum" }} {{ $c.QuorumThreshold }} ({{ if $c.QuorumMode }}{{ t "quorum_mode" }}{{ else }}{{ t "first_report" }}{{ end }})</span>
+              <span>Primary TTL {{ $c.PrimaryDNS.TTL }}s</span>
+              {{ if $c.ReplicaDNS }}<span>Replica TTL {{ $c.ReplicaDNS.TTL }}s</span>{{ end }}
+              {{ if $detail }}<span>Sentinel {{ $detail.NumSentinels }}</span>{{ end }}
+            </div>
+
+            {{ $grpSentinels := index $.Data.SentinelsByGroup $c.GroupName }}
+            {{ if $grpSentinels }}
+            <div class="mt-3 flex flex-wrap gap-2">
+              {{ range $grpSentinels }}
+              <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs">
+                <span class="font-mono text-slate-700">{{ .SentinelNodeName }}</span>
+                <span class="text-slate-400">{{ .Host }}:{{ .Port }}</span>
+                {{ if index $.Data.SentinelPingResults .SentinelNodeName }}<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                {{ else }}<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ end }}
+              </div>
+              {{ end }}
+            </div>
+            {{ end }}
+          </div>
+        </details>
+      </td>
+    </tr>
+
+    {{ end }}
+    </tbody>
+  </table>
+  {{ if gt .Data.ClusterTotalPages 1 }}
+  {{ $cp := .Data.ClusterPage }}{{ $ctp := .Data.ClusterTotalPages }}
+  {{ $cs := sub $cp 2 }}{{ if lt $cs 1 }}{{ $cs = 1 }}{{ end }}
+  {{ $ce := add $cs 4 }}{{ if gt $ce $ctp }}{{ $ce = $ctp }}{{ end }}
+  {{ $cs2 := sub $ce 4 }}{{ if gt $cs2 1 }}{{ $cs = $cs2 }}{{ end }}
+  <div class="px-6 py-3 flex justify-center gap-1">
+    {{ if gt $cp 1 }}<a href="/admin/clusters?cp={{ sub $cp 1 }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></a>
+    {{ else }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></span>{{ end }}
+    {{ if gt $cs 1 }}<a href="/admin/clusters?cp=1" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50">1</a>{{ if gt $cs 2 }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 text-sm text-slate-400">...</span>{{ end }}{{ end }}
+    {{ range $p := seq $cs $ce }}{{ if eq $p $cp }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm bg-indigo-600 text-white border border-indigo-600 font-medium">{{ $p }}</span>
+    {{ else }}<a href="/admin/clusters?cp={{ $p }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50">{{ $p }}</a>{{ end }}{{ end }}
+    {{ if lt $ce $ctp }}{{ if lt $ce (sub $ctp 1) }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 text-sm text-slate-400">...</span>{{ end }}<a href="/admin/clusters?cp={{ $ctp }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50">{{ $ctp }}</a>{{ end }}
+    {{ if lt $cp $ctp }}<a href="/admin/clusters?cp={{ add $cp 1 }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
+    {{ else }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>{{ end }}
+  </div>
+  {{ end }}
+</div>
+
+<!-- Modals -->
+{{ range $c := .Data.Clusters }}
+{{ $detail := index $.Data.LiveInfo $c.MasterName }}
+
+<!-- Edit modal -->
+<div id="modal-edit-{{ $c.MasterName }}" class="modal-overlay">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-lg font-bold text-slate-900">{{ t "edit_replication_group" }}</h2>
+      <button onclick="closeModal('modal-edit-{{ $c.MasterName }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+    </div>
+    <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "cluster_info" }}</div>
+    <div class="grid grid-cols-2 gap-x-6 gap-y-2 mb-5 text-sm">
+      <div class="text-slate-500">Master Name</div><div class="font-mono text-slate-900">{{ $c.MasterName }}</div>
+      <div class="text-slate-500">Sentinel Cluster</div><div class="text-slate-900">{{ $c.GroupName }}</div>
+      <div class="text-slate-500">{{ t "dns_provider" }}</div><div class="text-slate-900">{{ $c.DNSProvider }}</div>
+      <div class="text-slate-500">Primary DNS</div><div class="font-mono text-slate-900 text-sm">{{ $c.PrimaryDNS.RecordName }}.{{ $c.PrimaryDNS.Zone }}</div>
+      {{ if $c.ReplicaDNS }}<div class="text-slate-500">Replica DNS</div><div class="font-mono text-slate-900 text-sm">{{ $c.ReplicaDNS.RecordName }}.{{ $c.ReplicaDNS.Zone }}</div>{{ end }}
+    </div>
+    <form method="post" action="/admin/clusters/{{ $c.MasterName }}/edit">
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "dns_ttl" }}</div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "dns_ttl" }}</label>
+          <input type="number" name="dns_ttl" value="{{ $c.PrimaryDNS.TTL }}" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+          <p class="text-xs text-slate-400 mt-1">{{ t "dns_ttl_desc" }}</p>
+        </div>
+      </div>
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1 pb-2 border-b border-gray-100">{{ t "sentinel_settings" }}</div>
+      <p class="text-xs text-slate-400 mb-3">{{ t "sentinel_settings_desc" }}</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "down_after_ms" }}</label>
+          <input type="number" name="down_after_ms" value="{{ if $detail }}{{ $detail.DownAfterMs }}{{ else }}5000{{ end }}" min="1000" step="1000" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "failover_timeout" }}</label>
+          <input type="number" name="failover_timeout" value="{{ if $detail }}{{ $detail.FailoverTimeout }}{{ else }}30000{{ end }}" min="5000" step="1000" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <button type="button" onclick="closeModal('modal-edit-{{ $c.MasterName }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "save" }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Failover modal -->
+<div id="modal-failover-{{ $c.MasterName }}" class="modal-overlay">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold text-slate-900">{{ t "run_failover" }}</h2>
+      <button onclick="closeModal('modal-failover-{{ $c.MasterName }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+    </div>
+    <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong> — {{ t "failover_confirm" }}<br><span class="text-amber-600 font-medium">{{ t "primary_changes_immediately" }}</span> {{ t "continue_question" }}</p>
+    <div class="flex justify-end gap-3">
+      <button onclick="closeModal('modal-failover-{{ $c.MasterName }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/test-failover" class="m-0"><button type="submit" class="px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600">{{ t "run_failover" }}</button></form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete modal -->
+<div id="modal-delete-{{ $c.MasterName }}" class="modal-overlay">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold text-red-600">{{ t "delete_replication_group" }}</h2>
+      <button onclick="closeModal('modal-delete-{{ $c.MasterName }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+    </div>
+    <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong> {{ t "delete_confirm" }}<br>{{ t "delete_sentinel_dns" }}</p>
+    <div class="flex justify-end gap-3">
+      <button onclick="closeModal('modal-delete-{{ $c.MasterName }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/delete" class="m-0"><button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">{{ t "delete" }}</button></form>
+    </div>
+  </div>
+</div>
+
+<!-- Sync DNS modal -->
+<div id="modal-sync-dns-{{ $c.MasterName }}" class="modal-overlay">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold text-slate-900">{{ t "sync_dns" }}</h2>
+      <button onclick="closeModal('modal-sync-dns-{{ $c.MasterName }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+    </div>
+    <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong><br>{{ t "sync_dns_desc" }}</p>
+    <div class="flex justify-end gap-3">
+      <button onclick="closeModal('modal-sync-dns-{{ $c.MasterName }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/sync-dns" class="m-0"><button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "sync_dns" }}</button></form>
+    </div>
+  </div>
+</div>
+
+<!-- Pause modal -->
+<div id="modal-pause-{{ $c.MasterName }}" class="modal-overlay">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold text-slate-900">{{ t "pause_monitoring" }}</h2>
+      <button onclick="closeModal('modal-pause-{{ $c.MasterName }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+    </div>
+    <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong><br><br>{{ t "pause_desc" }}</p>
+    <div class="flex justify-end gap-3">
+      <button onclick="closeModal('modal-pause-{{ $c.MasterName }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/pause" class="m-0"><button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">{{ t "pause" }}</button></form>
+    </div>
+  </div>
+</div>
+
+<!-- Resume modal -->
+<div id="modal-resume-{{ $c.MasterName }}" class="modal-overlay">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold text-emerald-600">{{ t "resume_monitoring" }}</h2>
+      <button onclick="closeModal('modal-resume-{{ $c.MasterName }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+    </div>
+    <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong><br><br>{{ t "resume_desc" }}</p>
+    <div class="flex justify-end gap-3">
+      <button onclick="closeModal('modal-resume-{{ $c.MasterName }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+      <form method="post" action="/admin/clusters/{{ $c.MasterName }}/resume" class="m-0"><button type="submit" class="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700">{{ t "resume" }}</button></form>
+    </div>
+  </div>
+</div>
+
+{{ end }}
+
+{{ else }}
+<div class="bg-white rounded-xl shadow-sm border border-gray-100">
+  <div class="text-center py-12">
+    <p class="text-slate-400">{{ t "no_repl_registered" }}</p>
+    <button class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" onclick="openModal('modal-cluster-new')">{{ t "first_repl_register" }}</button>
+  </div>
+</div>
+{{ end }}
+
+<!-- Register Replication Group Modal -->
+<div id="modal-cluster-new" class="modal-overlay">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-lg font-bold text-slate-900">{{ t "register_replication_group" }}</h2>
+      <button onclick="closeModal('modal-cluster-new')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+    </div>
+    <form method="post" action="/admin/clusters/new">
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "sentinel_connection" }}</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Sentinel Cluster</label>
+          <select name="sentinel_cluster" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+            <option value="">{{ t "select" }}</option>
+            {{ range .Data.SentinelClusterNames }}<option value="{{ . }}">{{ . }}</option>{{ end }}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "monitoring_name" }}</label>
+          <input type="text" id="new_monitoring_name" name="monitoring_name" required placeholder="mymaster" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+          <p class="text-xs text-slate-400 mt-1">{{ t "monitoring_name_desc" }}</p>
+        </div>
+      </div>
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "valkey_primary" }}</div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "primary_ip" }}</label><input type="text" name="primary_ip" required placeholder="10.0.0.11" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "port" }}</label><input type="number" name="primary_port" value="6379" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "quorum" }}</label><input type="number" name="quorum_threshold" value="2" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+      </div>
+      <div class="mb-5 max-w-xs">
+        <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "redis_password_optional" }}</label>
+        <input type="password" name="redis_password" placeholder="requirepass" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+      </div>
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "dns_settings" }}</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "dns_provider" }}</label>
+          <select id="new_dns_provider" name="dns_provider" required onchange="updateNewDnsPreview()" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+            <option value="">{{ t "select" }}</option>
+            {{ range $name, $zone := .Data.DNSProviders }}<option value="{{ $name }}" data-zone="{{ $zone }}">{{ $name }} ({{ $zone }})</option>{{ end }}
+          </select>
+        </div>
+        <div class="max-w-[120px]">
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "dns_ttl_sec" }}</label>
+          <input type="number" name="dns_ttl" value="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+      </div>
+      <div class="mb-5">
+        <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "primary_dns_auto" }}</label>
+        <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+          <div class="font-mono text-sm text-slate-600">Primary: <strong id="new-preview-primary">primary-____.zone</strong></div>
+          <div id="new-replica-preview" class="font-mono text-sm text-slate-600 mt-1 hidden">Replica: <span id="new-preview-replica">replica-____.zone</span></div>
+        </div>
+      </div>
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "options" }}</div>
+      <div class="flex gap-6 mb-4">
+        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="new_create_replica_dns" name="create_replica_dns" class="w-4 h-4 accent-indigo-600 rounded" onchange="toggleReplicaPreview()"><span class="text-sm text-slate-700">{{ t "create_replica_dns" }}</span></label>
+        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="quorum_mode" checked class="w-4 h-4 accent-indigo-600 rounded"><span class="text-sm text-slate-700">{{ t "quorum_mode" }}</span></label>
+      </div>
+      <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+        <button type="button" onclick="closeModal('modal-cluster-new')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "register" }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function updateNewDnsPreview() {
+    var s = document.getElementById('new_dns_provider');
+    var n = document.getElementById('new_monitoring_name').value || '____';
+    var pp = document.getElementById('new-preview-primary');
+    var pr = document.getElementById('new-preview-replica');
+    var opt = s.options[s.selectedIndex];
+    var z = opt ? opt.getAttribute('data-zone') || '' : '';
+    var sfx = z ? '.' + z : '';
+    pp.textContent = 'primary-' + n + sfx;
+    pr.textContent = 'replica-' + n + sfx;
+}
+var mni = document.getElementById('new_monitoring_name');
+if (mni) mni.addEventListener('input', updateNewDnsPreview);
+function toggleReplicaPreview() {
+    var c = document.getElementById('new_create_replica_dns').checked;
+    document.getElementById('new-replica-preview').classList.toggle('hidden', !c);
+}
+</script>
+{{ end }}

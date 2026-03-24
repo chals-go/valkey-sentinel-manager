@@ -1,0 +1,10 @@
+# === Sentinel Agent Configuration ===
+# Deploy to: /etc/valkey/sentinel-agent.yaml
+# Environment variables (SMGR_ prefix) override these values.
+
+monitor_url: "http://10.0.0.100:8000"
+api_key: ""                     # API token from Monitor settings page
+sentinel_node_name: "sentinel-01"
+group_name: "my-cluster"
+timeout_seconds: 10
+retry_count: 2

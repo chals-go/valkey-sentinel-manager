@@ -1,0 +1,258 @@
+{{ define "settings-dns-content" }}
+<div class="flex items-center justify-between mb-8">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900">{{ t "dns_provider" }}</h1>
+    <p class="text-sm text-slate-500 mt-1">{{ t "dns_provider_desc" }}</p>
+  </div>
+  <button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" onclick="openModal('modal-dns-new')">+ {{ t "register_provider" }}</button>
+</div>
+
+{{ if .Data.Configs }}
+<div class="bg-white rounded-xl shadow-sm border border-gray-100">
+  <table class="w-full">
+    <thead>
+      <tr>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "provider_name" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "provider_type" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "config" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "status" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ range $name, $cfg := .Data.Configs }}
+      <tr class="hover:bg-gray-50/50 transition-colors">
+        <td class="px-6 py-4 border-b border-gray-50 font-mono font-semibold text-sm text-slate-900">{{ $name }}</td>
+        <td class="px-6 py-4 border-b border-gray-50">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>{{ index $cfg "type" }}</span>
+        </td>
+        <td class="px-6 py-4 border-b border-gray-50 text-xs font-mono text-slate-400">
+          {{ range $k, $v := $cfg }}{{ if ne $k "type" }}{{ $k }}={{ maskValue $k $v }} {{ end }}{{ end }}
+        </td>
+        <td class="px-6 py-4 border-b border-gray-50">
+          {{ if index $.Data.DNSStatus $name }}
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "ok" }}</span>
+          {{ else }}
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ t "not_loaded" }}</span>
+          {{ end }}
+        </td>
+        <td class="px-6 py-4 border-b border-gray-50 text-right">
+          <div class="flex justify-end gap-1">
+            <button class="relative group p-2 text-slate-400 hover:text-slate-700 hover:bg-gray-100 rounded-lg transition-colors" onclick="openModal('modal-dns-edit-{{ $name }}')">
+              {{ template "icon-edit" }}
+              <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">{{ t "edit" }}</span>
+            </button>
+            <button class="relative group p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" onclick="openModal('modal-dns-delete-{{ $name }}')">
+              {{ template "icon-delete" }}
+              <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">{{ t "delete" }}</span>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {{ end }}
+    </tbody>
+  </table>
+</div>
+
+{{ range $name, $cfg := .Data.Configs }}
+<div id="modal-dns-delete-{{ $name }}" class="modal-overlay">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold text-red-600">{{ t "delete_provider" }}</h2>
+      <button onclick="closeModal('modal-dns-delete-{{ $name }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+    </div>
+    <p class="text-sm text-slate-600 mb-6">{{ t "delete_provider_confirm" }} <strong class="font-mono">{{ $name }}</strong></p>
+    <div class="flex justify-end gap-3">
+      <button onclick="closeModal('modal-dns-delete-{{ $name }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+      <form method="post" action="/admin/dns-provider/{{ $name }}/delete" class="m-0">
+        <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">{{ t "delete" }}</button>
+      </form>
+    </div>
+  </div>
+</div>
+{{ end }}
+
+<!-- Edit modals -->
+{{ range $name, $cfg := $.Data.Configs }}
+<div id="modal-dns-edit-{{ $name }}" class="modal-overlay">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-lg font-bold text-slate-900">{{ t "edit_dns_provider" }} — {{ $name }}</h2>
+      <button onclick="closeModal('modal-dns-edit-{{ $name }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+    </div>
+    <form method="post" action="/admin/settings/dns/edit/{{ $name }}">
+      <input type="hidden" name="provider_type" value="{{ index $cfg "type" }}">
+
+      {{ if eq (index $cfg "type") "route53" }}
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">Route53</div>
+      <div class="space-y-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_id" }}</label><input type="text" name="r53_zone_id" value="{{ index $cfg "zone_id" }}" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_name" }}</label><input type="text" name="r53_zone_name" value="{{ index $cfg "zone_name" }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        </div>
+        <div class="max-w-[240px]"><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "region" }}</label><input type="text" name="r53_region" value="{{ index $cfg "region" }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "access_key" }}</label><input type="text" name="r53_access_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none" placeholder="Leave blank to keep current"></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "secret_key" }}</label><input type="password" name="r53_secret_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none" placeholder="Leave blank to keep current"></div>
+        </div>
+      </div>
+      {{ end }}
+
+      {{ if eq (index $cfg "type") "azure" }}
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">Azure DNS</div>
+      <div class="space-y-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "subscription_id" }}</label><input type="text" name="az_subscription_id" value="{{ index $cfg "subscription_id" }}" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "resource_group" }}</label><input type="text" name="az_resource_group" value="{{ index $cfg "resource_group" }}" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_name" }}</label><input type="text" name="az_zone_name" value="{{ index $cfg "zone_name" }}" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "auth_type" }}</label>
+          <select name="az_auth_type" id="edit-az-auth-{{ $name }}" onchange="toggleEditAzAuth('{{ $name }}', this.value)" class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+            <option value="system_identity" {{ if eq (index $cfg "auth_type") "system_identity" }}selected{{ end }}>{{ t "system_identity" }}</option>
+            <option value="user_identity" {{ if eq (index $cfg "auth_type") "user_identity" }}selected{{ end }}>{{ t "user_identity" }}</option>
+            <option value="service_principal" {{ if eq (index $cfg "auth_type") "service_principal" }}selected{{ end }}>{{ t "service_principal" }}</option>
+          </select>
+        </div>
+        <div id="edit-az-cred-{{ $name }}" style="{{ if eq (index $cfg "auth_type") "system_identity" }}display:none{{ end }}">
+          <div class="mb-4 max-w-sm"><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "client_id" }}</label><input type="text" name="az_client_id" placeholder="Leave blank to keep current" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div id="edit-az-sp-{{ $name }}" style="{{ if ne (index $cfg "auth_type") "service_principal" }}display:none{{ end }}" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "tenant_id" }}</label><input type="text" name="az_tenant_id" placeholder="Leave blank to keep current" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+            <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "client_secret" }}</label><input type="password" name="az_client_secret" placeholder="Leave blank to keep current" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          </div>
+        </div>
+      </div>
+      {{ end }}
+
+      {{ if eq (index $cfg "type") "bind" }}
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">BIND</div>
+      <div class="space-y-4 mb-6">
+        <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "api_url" }}</label><input type="text" name="bind_api_url" value="{{ index $cfg "api_url" }}" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_name" }}</label><input type="text" name="bind_zone_name" value="{{ index $cfg "zone_name" }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "api_key_optional" }}</label><input type="password" name="bind_api_key" placeholder="Leave blank to keep current" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+      </div>
+      {{ end }}
+
+      <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <button type="button" onclick="closeModal('modal-dns-edit-{{ $name }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "save" }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{{ end }}
+
+{{ else }}
+<div class="bg-white rounded-xl shadow-sm border border-gray-100">
+  <div class="text-center py-12">
+    <p class="text-slate-400">{{ t "no_dns_provider" }}</p>
+    <button class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" onclick="openModal('modal-dns-new')">{{ t "first_provider_register" }}</button>
+  </div>
+</div>
+{{ end }}
+
+<!-- Register DNS Provider Modal -->
+<div id="modal-dns-new" class="modal-overlay">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-lg font-bold text-slate-900">{{ t "register_dns_provider" }}</h2>
+      <button onclick="closeModal('modal-dns-new')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+    </div>
+    <form method="post" action="/admin/dns-provider/new">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "provider_name" }}</label>
+          <input type="text" name="provider_name" required placeholder="route53-prod" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "provider_type" }}</label>
+          <select name="provider_type" id="modal_provider_type" onchange="toggleModalProviderFields(this.value)" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+            <option value="route53">Route53</option>
+            <option value="azure">Azure DNS</option>
+            <option value="bind">BIND</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Route53 fields -->
+      <div id="modal-fields-route53">
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">Route53</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_id" }}</label><input type="text" name="r53_zone_id" placeholder="Z1234567890" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_name" }}</label><input type="text" name="r53_zone_name" placeholder="example.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        </div>
+        <div class="mb-4 max-w-[240px]"><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "region" }}</label><input type="text" name="r53_region" value="us-east-1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        <div class="mb-3">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="modal-r53-use-key" onchange="document.getElementById('modal-r53-key-fields').style.display=this.checked?'':'none'" class="w-4 h-4 accent-indigo-600 rounded">
+            <span class="text-sm text-slate-700">{{ t "use_access_key" }}</span>
+          </label>
+          <p class="text-xs text-slate-400 mt-1 ml-6">{{ t "iam_role_default" }}</p>
+        </div>
+        <div id="modal-r53-key-fields" style="display:none" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "access_key" }}</label><input type="text" name="r53_access_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "secret_key" }}</label><input type="password" name="r53_secret_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        </div>
+      </div>
+
+      <!-- Azure fields -->
+      <div id="modal-fields-azure" style="display:none">
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">Azure DNS</div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "subscription_id" }}</label><input type="text" name="az_subscription_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "resource_group" }}</label><input type="text" name="az_resource_group" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_name" }}</label><input type="text" name="az_zone_name" placeholder="example.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "auth_type" }}</label>
+          <select name="az_auth_type" id="modal-az-auth" onchange="toggleModalAzureAuth(this.value)" class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+            <option value="system_identity">{{ t "system_identity" }}</option>
+            <option value="user_identity">{{ t "user_identity" }}</option>
+            <option value="service_principal">{{ t "service_principal" }}</option>
+          </select>
+        </div>
+        <div id="modal-az-credential-fields" style="display:none">
+          <div class="mb-4 max-w-sm"><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "client_id" }}</label><input type="text" name="az_client_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div id="modal-az-sp-extra" style="display:none" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "tenant_id" }}</label><input type="text" name="az_tenant_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+            <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "client_secret" }}</label><input type="password" name="az_client_secret" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BIND fields -->
+      <div id="modal-fields-bind" style="display:none">
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">BIND</div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "api_url" }}</label><input type="text" name="bind_api_url" placeholder="http://bind-server:8080" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_name" }}</label><input type="text" name="bind_zone_name" placeholder="example.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "api_key_optional" }}</label><input type="password" name="bind_api_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+        <button type="button" onclick="closeModal('modal-dns-new')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "register" }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function toggleModalProviderFields(type) {
+    document.getElementById('modal-fields-route53').style.display = type === 'route53' ? '' : 'none';
+    document.getElementById('modal-fields-azure').style.display = type === 'azure' ? '' : 'none';
+    document.getElementById('modal-fields-bind').style.display = type === 'bind' ? '' : 'none';
+}
+function toggleModalAzureAuth(authType) {
+    var show = authType === 'user_identity' || authType === 'service_principal';
+    document.getElementById('modal-az-credential-fields').style.display = show ? '' : 'none';
+    document.getElementById('modal-az-sp-extra').style.display = authType === 'service_principal' ? '' : 'none';
+}
+function toggleEditAzAuth(name, authType) {
+    var show = authType === 'user_identity' || authType === 'service_principal';
+    document.getElementById('edit-az-cred-' + name).style.display = show ? '' : 'none';
+    document.getElementById('edit-az-sp-' + name).style.display = authType === 'service_principal' ? '' : 'none';
+}
+</script>
+{{ end }}

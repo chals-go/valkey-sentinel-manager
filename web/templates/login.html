@@ -1,0 +1,51 @@
+{{ define "login-content" }}
+<div class="login-page">
+  <div class="login-left bg-gradient-to-br from-slate-800 to-slate-900 hidden lg:flex flex-col justify-between p-16 text-white">
+    <div>
+      <h1 class="text-xl font-bold tracking-tight"><span class="text-indigo-400">Sentinel</span> Manager</h1>
+    </div>
+    <div class="max-w-md">
+      <h2 class="text-4xl font-bold leading-tight mb-6">Valkey Sentinel<br>DNS Failover<br><span class="text-indigo-400">Automation</span></h2>
+      <p class="text-slate-400 text-lg leading-relaxed">{{ t "login_hero_desc" }}</p>
+      <div class="mt-10 flex gap-10 text-sm text-slate-500">
+        <div><div class="text-2xl font-bold text-white">3</div><div>{{ t "dns_provider_count" }}</div><div class="text-xs text-slate-600">Route53 / Azure / BIND</div></div>
+        <div><div class="text-2xl font-bold text-white">&lt;3s</div><div>{{ t "failover_ttl" }}</div><div class="text-xs text-slate-600">{{ t "fast_dns" }}</div></div>
+        <div><div class="text-2xl font-bold text-white">HA</div><div>{{ t "multi_instance" }}</div><div class="text-xs text-slate-600">{{ t "distributed_lock" }}</div></div>
+      </div>
+    </div>
+    <div class="text-xs text-slate-600">Valkey Sentinel DNS Failover Automation System</div>
+  </div>
+  <div class="login-right bg-gray-50 flex items-center justify-center p-8">
+    <div class="w-full max-w-md">
+      <div class="text-center mb-8 lg:hidden">
+        <h1 class="text-2xl font-bold"><span class="text-indigo-600">Sentinel</span> Manager</h1>
+        <p class="text-sm text-slate-400 mt-1">Valkey Sentinel DNS Failover</p>
+      </div>
+      <div class="bg-white rounded-2xl p-10 shadow-lg border border-gray-100">
+        <div class="mb-8">
+          <h2 class="text-xl font-bold text-slate-900">{{ t "login" }}</h2>
+          <p class="text-sm text-slate-400 mt-1">{{ t "login_desc" }}</p>
+        </div>
+        {{ if .FlashMessage }}
+        <div class="mb-4 px-4 py-3 rounded-xl text-sm bg-red-50 text-red-700 border border-red-200 flex items-center gap-2">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          {{ .FlashMessage }}
+        </div>
+        {{ end }}
+        <form method="post" action="/admin/login">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ t "username" }}</label>
+            <input type="text" name="username" required autofocus placeholder="admin" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all">
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ t "password" }}</label>
+            <input type="password" name="password" required placeholder="********" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all">
+          </div>
+          <button type="submit" class="w-full bg-indigo-600 text-white py-2.5 rounded-lg hover:bg-indigo-700 font-medium text-sm transition-colors">{{ t "login" }}</button>
+        </form>
+      </div>
+      <p class="text-center text-xs text-slate-400 mt-6">Sentinel Manager &mdash; {{ t "login_tagline" }}</p>
+    </div>
+  </div>
+</div>
+{{ end }}

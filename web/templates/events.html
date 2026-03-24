@@ -1,0 +1,85 @@
+{{ define "events-content" }}
+<div class="mb-8">
+  <h1 class="text-2xl font-bold text-slate-900">{{ t "event_log" }}</h1>
+  <p class="text-sm text-slate-500 mt-1">{{ t "event_desc" }}</p>
+</div>
+
+<!-- Filter tabs -->
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  <a href="/admin/events" class="px-3 py-1.5 rounded-lg text-sm font-medium {{ if not .Data.FilterType }}bg-indigo-600 text-white{{ else }}bg-white text-slate-600 border border-gray-300 hover:bg-gray-50{{ end }}">{{ t "all" }}</a>
+  <a href="/admin/events?type=failover" class="px-3 py-1.5 rounded-lg text-sm font-medium {{ if eq .Data.FilterType "failover" }}bg-indigo-600 text-white{{ else }}bg-white text-slate-600 border border-gray-300 hover:bg-gray-50{{ end }}">{{ t "failover_event" }}</a>
+  <a href="/admin/events?type=replica_down" class="px-3 py-1.5 rounded-lg text-sm font-medium {{ if eq .Data.FilterType "replica_down" }}bg-indigo-600 text-white{{ else }}bg-white text-slate-600 border border-gray-300 hover:bg-gray-50{{ end }}">{{ t "replica_down" }}</a>
+  <a href="/admin/events?type=replica_up" class="px-3 py-1.5 rounded-lg text-sm font-medium {{ if eq .Data.FilterType "replica_up" }}bg-indigo-600 text-white{{ else }}bg-white text-slate-600 border border-gray-300 hover:bg-gray-50{{ end }}">{{ t "replica_up" }}</a>
+  <a href="/admin/events?type=sentinel_down" class="px-3 py-1.5 rounded-lg text-sm font-medium {{ if eq .Data.FilterType "sentinel_down" }}bg-indigo-600 text-white{{ else }}bg-white text-slate-600 border border-gray-300 hover:bg-gray-50{{ end }}">{{ t "sentinel_down" }}</a>
+  <a href="/admin/events?type=sentinel_up" class="px-3 py-1.5 rounded-lg text-sm font-medium {{ if eq .Data.FilterType "sentinel_up" }}bg-indigo-600 text-white{{ else }}bg-white text-slate-600 border border-gray-300 hover:bg-gray-50{{ end }}">{{ t "sentinel_up" }}</a>
+
+  <form method="get" action="/admin/events" class="ml-auto relative">
+    {{ if .Data.FilterType }}<input type="hidden" name="type" value="{{ .Data.FilterType }}">{{ end }}
+    <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+    <input type="text" name="q" value="{{ .Data.SearchQuery }}" placeholder="{{ t "search" }}" class="w-48 pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+  </form>
+</div>
+
+{{ if .Data.Events }}
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+  <table class="w-full">
+    <thead>
+      <tr>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "time" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "type" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "group" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "master" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">Sentinel</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "from" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "to" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-gray-200">{{ t "role" }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ range .Data.Events }}
+      <tr class="hover:bg-gray-50/50 transition-colors">
+        <td class="px-6 py-3 border-b border-gray-50 text-xs text-slate-400 whitespace-nowrap">{{ datetime .Timestamp }}</td>
+        <td class="px-6 py-3 border-b border-gray-50">
+          {{ if eq (printf "%s" .EventType) "failover" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ t "failover_event" }}</span>
+          {{ else if eq (printf "%s" .EventType) "replica_down" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ t "replica_down" }}</span>
+          {{ else if eq (printf "%s" .EventType) "replica_up" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "replica_up" }}</span>
+          {{ else if eq (printf "%s" .EventType) "sentinel_down" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ t "sentinel_down" }}</span>
+          {{ else if eq (printf "%s" .EventType) "sentinel_up" }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "sentinel_up" }}</span>
+          {{ else }}<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>{{ .EventType }}</span>{{ end }}
+        </td>
+        <td class="px-6 py-3 border-b border-gray-50 text-sm text-slate-600">{{ .GroupName }}</td>
+        <td class="px-6 py-3 border-b border-gray-50 text-sm text-slate-600">{{ .MasterName }}</td>
+        <td class="px-6 py-3 border-b border-gray-50 text-sm font-mono text-slate-500">{{ .SentinelNodeName }}</td>
+        <td class="px-6 py-3 border-b border-gray-50 text-sm font-mono text-slate-600">{{ .FromIP }}:{{ .FromPort }}</td>
+        <td class="px-6 py-3 border-b border-gray-50 text-sm font-mono text-slate-600">{{ if .ToIP }}{{ .ToIP }}:{{ .ToPort }}{{ else }}<span class="text-slate-300">—</span>{{ end }}</td>
+        <td class="px-6 py-3 border-b border-gray-50 text-sm text-slate-500">{{ if .Role }}{{ .Role }}{{ else }}<span class="text-slate-300">—</span>{{ end }}</td>
+      </tr>
+      {{ end }}
+    </tbody>
+  </table>
+</div>
+
+{{ if gt .Data.TotalPages 1 }}
+{{ $ep := .Data.CurrentPage }}{{ $etp := .Data.TotalPages }}
+{{ $qs := "" }}{{ if .Data.FilterType }}{{ $qs = printf "&type=%s" .Data.FilterType }}{{ end }}{{ if .Data.SearchQuery }}{{ $qs = printf "%s&q=%s" $qs .Data.SearchQuery }}{{ end }}
+{{ $es := sub $ep 2 }}{{ if lt $es 1 }}{{ $es = 1 }}{{ end }}
+{{ $ee := add $es 4 }}{{ if gt $ee $etp }}{{ $ee = $etp }}{{ end }}
+{{ $es2 := sub $ee 4 }}{{ if gt $es2 1 }}{{ $es = $es2 }}{{ end }}
+<div class="flex justify-center mt-6 gap-1">
+  {{ if gt $ep 1 }}<a href="/admin/events?page={{ sub $ep 1 }}{{ $qs }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></a>
+  {{ else }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></span>{{ end }}
+  {{ if gt $es 1 }}<a href="/admin/events?page=1{{ $qs }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50">1</a>{{ if gt $es 2 }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 text-sm text-slate-400">...</span>{{ end }}{{ end }}
+  {{ range $p := seq $es $ee }}{{ if eq $p $ep }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm bg-indigo-600 text-white border border-indigo-600 font-medium">{{ $p }}</span>
+  {{ else }}<a href="/admin/events?page={{ $p }}{{ $qs }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50">{{ $p }}</a>{{ end }}{{ end }}
+  {{ if lt $ee $etp }}{{ if lt $ee (sub $etp 1) }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 text-sm text-slate-400">...</span>{{ end }}<a href="/admin/events?page={{ $etp }}{{ $qs }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50">{{ $etp }}</a>{{ end }}
+  {{ if lt $ep $etp }}<a href="/admin/events?page={{ add $ep 1 }}{{ $qs }}" class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-600 hover:bg-gray-50"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
+  {{ else }}<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg text-sm border border-gray-200 bg-white text-slate-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>{{ end }}
+</div>
+{{ end }}
+
+{{ else }}
+<div class="bg-white rounded-xl shadow-sm border border-gray-100">
+  <div class="text-center py-12 text-slate-400">{{ t "no_events" }}</div>
+</div>
+{{ end }}
+{{ end }}

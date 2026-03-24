@@ -1,0 +1,34 @@
+{{ define "pagination" }}
+{{/* Expects .CurrentPage, .TotalPages as int, and .BaseURL as string */}}
+{{ if gt .TotalPages 1 }}
+<div class="flex justify-center mt-4 gap-1">
+  {{ if gt .CurrentPage 1 }}
+  <a href="{{ .BaseURL }}page={{ sub .CurrentPage 1 }}" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">&laquo;</a>
+  {{ end }}
+
+  {{ if gt .CurrentPage 3 }}
+  <a href="{{ .BaseURL }}page=1" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">1</a>
+  {{ if gt .CurrentPage 4 }}<span class="px-2 py-1.5 text-sm text-slate-400">…</span>{{ end }}
+  {{ end }}
+
+  {{ range $i := seq (sub .CurrentPage 2) (add .CurrentPage 2) }}
+  {{ if and (gt $i 0) (le $i $.TotalPages) }}
+  {{ if eq $i $.CurrentPage }}
+  <span class="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg">{{ $i }}</span>
+  {{ else }}
+  <a href="{{ $.BaseURL }}page={{ $i }}" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">{{ $i }}</a>
+  {{ end }}
+  {{ end }}
+  {{ end }}
+
+  {{ if lt .CurrentPage (sub .TotalPages 2) }}
+  {{ if lt .CurrentPage (sub .TotalPages 3) }}<span class="px-2 py-1.5 text-sm text-slate-400">…</span>{{ end }}
+  <a href="{{ .BaseURL }}page={{ .TotalPages }}" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">{{ .TotalPages }}</a>
+  {{ end }}
+
+  {{ if lt .CurrentPage .TotalPages }}
+  <a href="{{ .BaseURL }}page={{ add .CurrentPage 1 }}" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">&raquo;</a>
+  {{ end }}
+</div>
+{{ end }}
+{{ end }}

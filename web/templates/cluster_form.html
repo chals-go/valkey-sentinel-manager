@@ -1,0 +1,84 @@
+{{ define "cluster-form-content" }}
+<div class="mb-8">
+  <h1 class="text-2xl font-bold text-slate-900">{{ t "register_replication_group" }}</h1>
+  <p class="text-sm text-slate-500 mt-1">{{ t "repl_desc" }}</p>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 max-w-3xl overflow-hidden">
+  <div class="p-6">
+    <form method="post" action="/admin/clusters/new">
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "sentinel_connection" }}</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "sentinel_cluster" }}</label>
+          <select name="sentinel_cluster" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+            <option value="">{{ t "select" }}</option>
+            {{ range .Data.SentinelClusterNames }}<option value="{{ . }}">{{ . }}</option>{{ end }}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "monitoring_name" }}</label>
+          <input type="text" name="monitoring_name" required placeholder="mymaster" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+          <p class="text-xs text-slate-400 mt-1">{{ t "monitoring_name_desc" }}</p>
+        </div>
+      </div>
+
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "valkey_primary" }}</div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "primary_ip" }}</label>
+          <input type="text" name="primary_ip" required placeholder="10.0.0.11" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "port" }}</label>
+          <input type="number" name="primary_port" value="6379" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "quorum" }}</label>
+          <input type="number" name="quorum_threshold" value="2" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+      </div>
+      <div class="mb-6 max-w-xs">
+        <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "redis_password_optional" }}</label>
+        <input type="password" name="redis_password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+      </div>
+
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "dns_settings" }}</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "dns_provider" }}</label>
+          <select name="dns_provider" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+            <option value="">{{ t "select" }}</option>
+            {{ range $name, $zone := .Data.DNSProviders }}<option value="{{ $name }}">{{ $name }} ({{ $zone }})</option>{{ end }}
+          </select>
+        </div>
+        <div class="max-w-[120px]">
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "dns_ttl_sec" }}</label>
+          <input type="number" name="dns_ttl" value="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        </div>
+      </div>
+
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "options" }}</div>
+      <div class="mb-4">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" name="create_replica_dns" class="w-4 h-4 accent-indigo-600 rounded">
+          <span class="text-sm text-slate-700">{{ t "create_replica_dns" }}</span>
+        </label>
+        <p class="text-xs text-slate-400 mt-1 ml-7">{{ t "create_replica_dns_desc" }}</p>
+      </div>
+      <div class="mb-6">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" name="quorum_mode" checked class="w-4 h-4 accent-indigo-600 rounded">
+          <span class="text-sm text-slate-700">{{ t "quorum_mode" }}</span>
+        </label>
+        <p class="text-xs text-slate-400 mt-1 ml-7">{{ t "quorum_mode_desc" }}</p>
+      </div>
+
+      <div class="flex gap-3">
+        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "register" }}</button>
+        <a href="/admin/clusters" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</a>
+      </div>
+    </form>
+  </div>
+</div>
+{{ end }}

@@ -1,0 +1,38 @@
+# === Sentinel Manager Configuration ===
+# Environment variables (SMGR_ prefix) override these values.
+
+# Server
+host: "0.0.0.0"
+port: 8000
+debug: false
+secure_cookie: false              # true for HTTPS (sets Secure flag on cookies)
+
+# === Data Store (internal Valkey for Monitor data) ===
+store_type: "valkey"              # "valkey" or "memory"
+
+# Sentinel connection (recommended for production)
+# Sentinel이 현재 master를 자동으로 추적하므로 failover에도 안전합니다.
+store_sentinels: "10.0.0.1:26379,10.0.0.2:26379,10.0.0.3:26379"
+store_sentinel_master: "smgr-store"
+store_db: 0
+store_password: ""
+
+# Direct connection (dev/test only — store_sentinels가 비어있을 때만 사용)
+# store_url: "valkey://localhost:6379/0"
+
+# Event processing
+event_dedup_window_seconds: 30
+quorum_threshold: 2
+
+# Logging
+log_dir: "/var/log/sentinel-manager"
+
+# DNS defaults
+dns_default_ttl: 3
+dns_retry_count: 3
+dns_retry_base_delay: 1.0
+
+# Encryption key (32-byte base64-encoded, for sensitive config encryption)
+# Auto-generated on first run if empty. Keep this value safe — changing it
+# will make existing encrypted DNS provider credentials unreadable.
+encryption_key: ""
