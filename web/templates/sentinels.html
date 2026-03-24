@@ -211,16 +211,42 @@
 function updateModalSentinelInputs() {
     var count = parseInt(document.getElementById('modal_sentinel_count').value, 10);
     var container = document.getElementById('modal-sentinel-inputs');
-    container.innerHTML = '';
+    while (container.firstChild) container.removeChild(container.firstChild);
+    var inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none';
     for (var i = 0; i < count; i++) {
         var n = String(i + 1).padStart(2, '0');
-        container.innerHTML += '<div class="grid grid-cols-1 md:grid-cols-[1.5fr_2fr_100px] gap-4 mb-3">' +
-            '<div><label class="block text-sm font-medium text-slate-700 mb-1">Sentinel #' + (i+1) + ' ID</label>' +
-            '<input type="text" name="sentinel_ids" required placeholder="sentinel-' + n + '" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>' +
-            '<div><label class="block text-sm font-medium text-slate-700 mb-1">Host</label>' +
-            '<input type="text" name="sentinel_hosts" required placeholder="10.0.0.' + (i+1) + '" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>' +
-            '<div><label class="block text-sm font-medium text-slate-700 mb-1">Port</label>' +
-            '<input type="number" name="sentinel_ports" value="26379" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div></div>';
+        var row = document.createElement('div');
+        row.className = 'grid grid-cols-1 md:grid-cols-[1.5fr_2fr_100px] gap-4 mb-3';
+
+        var col1 = document.createElement('div');
+        var lbl1 = document.createElement('label');
+        lbl1.className = 'block text-sm font-medium text-slate-700 mb-1';
+        lbl1.textContent = 'Sentinel #' + (i+1) + ' ID';
+        var inp1 = document.createElement('input');
+        inp1.type = 'text'; inp1.name = 'sentinel_ids'; inp1.required = true;
+        inp1.placeholder = 'sentinel-' + n; inp1.className = inputClass;
+        col1.appendChild(lbl1); col1.appendChild(inp1);
+
+        var col2 = document.createElement('div');
+        var lbl2 = document.createElement('label');
+        lbl2.className = 'block text-sm font-medium text-slate-700 mb-1';
+        lbl2.textContent = 'Host';
+        var inp2 = document.createElement('input');
+        inp2.type = 'text'; inp2.name = 'sentinel_hosts'; inp2.required = true;
+        inp2.placeholder = '10.0.0.' + (i+1); inp2.className = inputClass;
+        col2.appendChild(lbl2); col2.appendChild(inp2);
+
+        var col3 = document.createElement('div');
+        var lbl3 = document.createElement('label');
+        lbl3.className = 'block text-sm font-medium text-slate-700 mb-1';
+        lbl3.textContent = 'Port';
+        var inp3 = document.createElement('input');
+        inp3.type = 'number'; inp3.name = 'sentinel_ports'; inp3.value = '26379';
+        inp3.className = inputClass;
+        col3.appendChild(lbl3); col3.appendChild(inp3);
+
+        row.appendChild(col1); row.appendChild(col2); row.appendChild(col3);
+        container.appendChild(row);
     }
 }
 document.addEventListener('DOMContentLoaded', updateModalSentinelInputs);

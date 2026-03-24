@@ -146,7 +146,8 @@ func (h *AdminHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	password := r.FormValue("password")
 
-	hash, _ := h.store.GetAdminPasswordHash(context.Background())
+	hash, storeErr := h.store.GetAdminPasswordHash(context.Background())
+	if storeErr != nil { slog.Warn("store error", "method", "GetAdminPasswordHash", "error", storeErr) }
 	var ok bool
 	if hash == "" {
 		ok = password == defaultPassword
@@ -185,9 +186,12 @@ func (h *AdminHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	clusters, _ := h.store.ListClusters(ctx)
-	events, _ := h.store.GetRecentEvents(ctx, 500)
-	sentinels, _ := h.store.ListSentinels(ctx, "")
+	clusters, storeErr := h.store.ListClusters(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "ListClusters", "error", storeErr) }
+	events, storeErr := h.store.GetRecentEvents(ctx, 500)
+	if storeErr != nil { slog.Warn("store error", "method", "GetRecentEvents", "error", storeErr) }
+	sentinels, storeErr := h.store.ListSentinels(ctx, "")
+	if storeErr != nil { slog.Warn("store error", "method", "ListSentinels", "error", storeErr) }
 
 	oneHourAgo := float64(time.Now().Unix()) - 3600
 	recentCount := 0
@@ -296,15 +300,18 @@ func (h *AdminHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) Clusters(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	clusters, _ := h.store.ListClusters(ctx)
-	sentinels, _ := h.store.ListSentinels(ctx, "")
+	clusters, storeErr := h.store.ListClusters(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "ListClusters", "error", storeErr) }
+	sentinels, storeErr := h.store.ListSentinels(ctx, "")
+	if storeErr != nil { slog.Warn("store error", "method", "ListSentinels", "error", storeErr) }
 
 	sentinelClusterNames := make(map[string]bool)
 	for _, s := range sentinels {
 		sentinelClusterNames[s.GroupName] = true
 	}
 
-	dnsConfigs, _ := h.store.ListDNSProviderConfigs(ctx)
+	dnsConfigs, storeErr := h.store.ListDNSProviderConfigs(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "ListDNSProviderConfigs", "error", storeErr) }
 	dnsProvidersWithZone := make(map[string]string)
 	for name, cfg := range dnsConfigs {
 		dnsProvidersWithZone[name] = cfg["zone_name"]
@@ -394,12 +401,14 @@ func (h *AdminHandler) Clusters(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) ClusterFormPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	sentinels, _ := h.store.ListSentinels(ctx, "")
+	sentinels, storeErr := h.store.ListSentinels(ctx, "")
+	if storeErr != nil { slog.Warn("store error", "method", "ListSentinels", "error", storeErr) }
 	sentinelClusterNames := make(map[string]bool)
 	for _, s := range sentinels {
 		sentinelClusterNames[s.GroupName] = true
 	}
-	dnsConfigs, _ := h.store.ListDNSProviderConfigs(ctx)
+	dnsConfigs, storeErr := h.store.ListDNSProviderConfigs(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "ListDNSProviderConfigs", "error", storeErr) }
 	dnsProvidersWithZone := make(map[string]string)
 	for name, cfg := range dnsConfigs {
 		dnsProvidersWithZone[name] = cfg["zone_name"]
@@ -428,7 +437,8 @@ func (h *AdminHandler) ClusterEditPage(w http.ResponseWriter, r *http.Request) {
 		downAfterMs = detail.DownAfterMs
 		failoverTimeout = detail.FailoverTimeout
 	}
-	dnsConfigs, _ := h.store.ListDNSProviderConfigs(ctx)
+	dnsConfigs, storeErr := h.store.ListDNSProviderConfigs(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "ListDNSProviderConfigs", "error", storeErr) }
 	dnsProvidersWithZone := make(map[string]string)
 	for name, cfg := range dnsConfigs {
 		dnsProvidersWithZone[name] = cfg["zone_name"]
@@ -479,7 +489,8 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get sentinel addrs from cluster.
-	sents, _ := h.store.ListSentinels(ctx, sentinelCluster)
+	sents, storeErr := h.store.ListSentinels(ctx, sentinelCluster)
+	if storeErr != nil { slog.Warn("store error", "method", "ListSentinels", "error", storeErr) }
 	var sentinelAddrs []string
 	var sentinelPassword string
 	for _, s := range sents {
@@ -487,7 +498,8 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get zone_name from DNS provider config.
-	dnsCfg, _ := h.store.GetDNSProviderConfig(ctx, dnsProvider)
+	dnsCfg, storeErr := h.store.GetDNSProviderConfig(ctx, dnsProvider)
+	if storeErr != nil { slog.Warn("store error", "method", "GetDNSProviderConfig", "error", storeErr) }
 	zoneName := ""
 	if dnsCfg != nil {
 		zoneName = dnsCfg["zone_name"]
@@ -511,7 +523,8 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	h.store.RegisterCluster(ctx, cluster)
 
 	// Sentinel MONITOR.
-	rt, _ := h.store.GetRuntimeSettings(ctx)
+	rt, storeErr := h.store.GetRuntimeSettings(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "GetRuntimeSettings", "error", storeErr) }
 	downMs := intFromMap(rt, "sentinel_down_after_ms", 5000)
 	failTimeout := intFromMap(rt, "sentinel_failover_timeout", 30000)
 
@@ -611,7 +624,8 @@ func (h *AdminHandler) ClusterPause(w http.ResponseWriter, r *http.Request) {
 	if detail != nil {
 		cluster.PausedDownAfterMs = detail.DownAfterMs
 	} else {
-		rt, _ := h.store.GetRuntimeSettings(ctx)
+		rt, storeErr := h.store.GetRuntimeSettings(ctx)
+		if storeErr != nil { slog.Warn("store error", "method", "GetRuntimeSettings", "error", storeErr) }
 		cluster.PausedDownAfterMs = intFromMap(rt, "sentinel_down_after_ms", 5000)
 	}
 	cluster.IsPaused = true
@@ -700,7 +714,8 @@ func (h *AdminHandler) ClusterSyncDNS(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) Sentinels(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	sentinels, _ := h.store.ListSentinels(ctx, "")
+	sentinels, storeErr := h.store.ListSentinels(ctx, "")
+	if storeErr != nil { slog.Warn("store error", "method", "ListSentinels", "error", storeErr) }
 
 	groups := make(map[string][]*models.Sentinel)
 	for _, s := range sentinels {
@@ -711,7 +726,8 @@ func (h *AdminHandler) Sentinels(w http.ResponseWriter, r *http.Request) {
 	pingResults := h.healthCheck.GetAllStatuses()
 
 	// Alert settings per group.
-	rt, _ := h.store.GetRuntimeSettings(ctx)
+	rt, storeErr := h.store.GetRuntimeSettings(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "GetRuntimeSettings", "error", storeErr) }
 	alertSettings := make(map[string]bool)
 	for grpName := range groups {
 		alertSettings[grpName] = rt["sentinel_alert:"+grpName] == "true"
@@ -759,7 +775,8 @@ func (h *AdminHandler) SentinelClusterCreate(w http.ResponseWriter, r *http.Requ
 func (h *AdminHandler) SentinelClusterDelete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	grpName := r.PathValue("grpName")
-	sentinels, _ := h.store.ListSentinels(ctx, grpName)
+	sentinels, storeErr := h.store.ListSentinels(ctx, grpName)
+	if storeErr != nil { slog.Warn("store error", "method", "ListSentinels", "error", storeErr) }
 	for _, s := range sentinels {
 		h.store.UnregisterSentinel(ctx, s.SentinelNodeName)
 	}
@@ -821,7 +838,8 @@ func (h *AdminHandler) SentinelClusterEditSubmit(w http.ResponseWriter, r *http.
 
 	// Alert toggle.
 	alertEnabled := r.FormValue("alert_enabled") == "on" || r.FormValue("alert_enabled") == "true"
-	rt, _ := h.store.GetRuntimeSettings(ctx)
+	rt, storeErr := h.store.GetRuntimeSettings(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "GetRuntimeSettings", "error", storeErr) }
 	if rt == nil {
 		rt = make(map[string]string)
 	}
@@ -841,7 +859,8 @@ func (h *AdminHandler) SentinelToggleAlert(w http.ResponseWriter, r *http.Reques
 	r.ParseForm()
 
 	enabled := r.FormValue("enabled") == "true"
-	rt, _ := h.store.GetRuntimeSettings(ctx)
+	rt, storeErr := h.store.GetRuntimeSettings(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "GetRuntimeSettings", "error", storeErr) }
 	if rt == nil {
 		rt = make(map[string]string)
 	}
@@ -858,7 +877,8 @@ func (h *AdminHandler) SentinelToggleAlert(w http.ResponseWriter, r *http.Reques
 
 func (h *AdminHandler) Events(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	allEvents, _ := h.store.GetRecentEvents(ctx, 5000)
+	allEvents, storeErr := h.store.GetRecentEvents(ctx, 5000)
+	if storeErr != nil { slog.Warn("store error", "method", "GetRecentEvents", "error", storeErr) }
 
 	filterType := r.URL.Query().Get("type")
 	searchQuery := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -926,7 +946,8 @@ func (h *AdminHandler) Events(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) SettingsServer(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	rt, _ := h.store.GetRuntimeSettings(ctx)
+	rt, storeErr := h.store.GetRuntimeSettings(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "GetRuntimeSettings", "error", storeErr) }
 	if rt == nil {
 		rt = make(map[string]string)
 	}
@@ -985,7 +1006,8 @@ func (h *AdminHandler) SettingsServerSave(w http.ResponseWriter, r *http.Request
 // === Settings: DNS ===
 
 func (h *AdminHandler) SettingsDNS(w http.ResponseWriter, r *http.Request) {
-	configs, _ := h.store.ListDNSProviderConfigs(r.Context())
+	configs, storeErr := h.store.ListDNSProviderConfigs(r.Context())
+	if storeErr != nil { slog.Warn("store error", "method", "ListDNSProviderConfigs", "error", storeErr) }
 
 	dnsStatus := make(map[string]bool)
 	for name, p := range h.dnsProviders {
@@ -1132,7 +1154,8 @@ func (h *AdminHandler) DNSProviderDelete(w http.ResponseWriter, r *http.Request)
 // === Settings: Token ===
 
 func (h *AdminHandler) getAPITokens(ctx context.Context) map[string]string {
-	rt, _ := h.store.GetRuntimeSettings(ctx)
+	rt, storeErr := h.store.GetRuntimeSettings(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "GetRuntimeSettings", "error", storeErr) }
 	tokens := make(map[string]string)
 	if raw, ok := rt["api_tokens"]; ok && raw != "" {
 		if err := json.Unmarshal([]byte(raw), &tokens); err != nil {
@@ -1149,7 +1172,8 @@ func (h *AdminHandler) getAPITokens(ctx context.Context) map[string]string {
 }
 
 func (h *AdminHandler) saveAPITokens(ctx context.Context, tokens map[string]string) {
-	rt, _ := h.store.GetRuntimeSettings(ctx)
+	rt, storeErr := h.store.GetRuntimeSettings(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "GetRuntimeSettings", "error", storeErr) }
 	if rt == nil {
 		rt = make(map[string]string)
 	}
@@ -1214,8 +1238,10 @@ func (h *AdminHandler) DeleteToken(w http.ResponseWriter, r *http.Request) {
 // === Settings: Slack ===
 
 func (h *AdminHandler) SettingsSlack(w http.ResponseWriter, r *http.Request) {
-	webhook, _ := h.store.GetSlackWebhookURL(r.Context())
-	channel, _ := h.store.GetSlackChannel(r.Context())
+	webhook, storeErr := h.store.GetSlackWebhookURL(r.Context())
+	if storeErr != nil { slog.Warn("store error", "method", "GetSlackWebhookURL", "error", storeErr) }
+	channel, storeErr := h.store.GetSlackChannel(r.Context())
+	if storeErr != nil { slog.Warn("store error", "method", "GetSlackChannel", "error", storeErr) }
 	h.render(w, "base", PageData{
 		Page: "settings-slack",
 		Data: map[string]any{"WebhookURL": webhook, "Channel": channel},
@@ -1262,7 +1288,8 @@ func (h *AdminHandler) SlackWebhookTest(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context()
 	t := NewTranslator(h.lang)
 
-	webhookURL, _ := h.store.GetSlackWebhookURL(ctx)
+	webhookURL, storeErr := h.store.GetSlackWebhookURL(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "GetSlackWebhookURL", "error", storeErr) }
 	if webhookURL == "" {
 		h.render(w, "base", PageData{
 			Page: "settings-slack", FlashMessage: t("flash_slack_no_url"), FlashType: "error",
@@ -1271,7 +1298,8 @@ func (h *AdminHandler) SlackWebhookTest(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	channel, _ := h.store.GetSlackChannel(ctx)
+	channel, storeErr := h.store.GetSlackChannel(ctx)
+	if storeErr != nil { slog.Warn("store error", "method", "GetSlackChannel", "error", storeErr) }
 
 	testEvent := &models.FailoverEvent{
 		GroupName: "test-group", MasterName: "mymaster", EventType: models.EventTypeFailover,
@@ -1317,7 +1345,8 @@ func (h *AdminHandler) SettingsAccountSubmit(w http.ResponseWriter, r *http.Requ
 	newPw := r.FormValue("new_password")
 	confirmPw := r.FormValue("confirm_password")
 
-	hash, _ := h.store.GetAdminPasswordHash(r.Context())
+	hash, storeErr := h.store.GetAdminPasswordHash(r.Context())
+	if storeErr != nil { slog.Warn("store error", "method", "GetAdminPasswordHash", "error", storeErr) }
 	var currentOK bool
 	if hash == "" {
 		currentOK = currentPw == defaultPassword
