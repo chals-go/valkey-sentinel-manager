@@ -12,8 +12,12 @@ ExecStart=/usr/local/bin/sentinel-manager --config /etc/sentinel-manager/config.
 Restart=always
 RestartSec=5
 
-# Security hardening (compatible with containers and older kernels)
+# Security hardening
 NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/sentinel-manager /etc/sentinel-manager
+PrivateTmp=true
 
 # Resource limits
 LimitNOFILE=65536
