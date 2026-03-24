@@ -4,7 +4,7 @@
     <h1 class="text-2xl font-bold text-slate-900">{{ t "dns_provider" }}</h1>
     <p class="text-sm text-slate-500 mt-1">{{ t "dns_provider_desc" }}</p>
   </div>
-  <button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" onclick="openModal('modal-dns-new')">+ {{ t "register_provider" }}</button>
+  <button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" data-modal-open="modal-dns-new">+ {{ t "register_provider" }}</button>
 </div>
 
 {{ if .Data.Configs }}
@@ -38,11 +38,11 @@
         </td>
         <td class="px-6 py-4 border-b border-gray-50 text-right">
           <div class="flex justify-end gap-1">
-            <button class="relative group p-2 text-slate-400 hover:text-slate-700 hover:bg-gray-100 rounded-lg transition-colors" onclick="openModal('modal-dns-edit-{{ $name }}')">
+            <button class="relative group p-2 text-slate-400 hover:text-slate-700 hover:bg-gray-100 rounded-lg transition-colors" data-modal-open="modal-dns-edit-{{ $name }}">
               {{ template "icon-edit" }}
               <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">{{ t "edit" }}</span>
             </button>
-            <button class="relative group p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" onclick="openModal('modal-dns-delete-{{ $name }}')">
+            <button class="relative group p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-modal-open="modal-dns-delete-{{ $name }}">
               {{ template "icon-delete" }}
               <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">{{ t "delete" }}</span>
             </button>
@@ -59,11 +59,11 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-red-600">{{ t "delete_provider" }}</h2>
-      <button onclick="closeModal('modal-dns-delete-{{ $name }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-dns-delete-{{ $name }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
     </div>
     <p class="text-sm text-slate-600 mb-6">{{ t "delete_provider_confirm" }} <strong class="font-mono">{{ $name }}</strong></p>
     <div class="flex justify-end gap-3">
-      <button onclick="closeModal('modal-dns-delete-{{ $name }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+      <button data-modal-close="modal-dns-delete-{{ $name }}" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
       <form method="post" action="/admin/dns-provider/{{ $name }}/delete" class="m-0">
         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
         <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">{{ t "delete" }}</button>
@@ -79,7 +79,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ t "edit_dns_provider" }} — {{ $name }}</h2>
-      <button onclick="closeModal('modal-dns-edit-{{ $name }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-dns-edit-{{ $name }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
     </div>
     <form method="post" action="/admin/settings/dns/edit/{{ $name }}">
       <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
@@ -110,7 +110,7 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "auth_type" }}</label>
-          <select name="az_auth_type" id="edit-az-auth-{{ $name }}" onchange="toggleEditAzAuth('{{ $name }}', this.value)" class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+          <select name="az_auth_type" id="edit-az-auth-{{ $name }}" data-toggle-edit-az-auth="{{ $name }}" class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
             <option value="system_identity" {{ if eq (index $cfg "auth_type") "system_identity" }}selected{{ end }}>{{ t "system_identity" }}</option>
             <option value="user_identity" {{ if eq (index $cfg "auth_type") "user_identity" }}selected{{ end }}>{{ t "user_identity" }}</option>
             <option value="service_principal" {{ if eq (index $cfg "auth_type") "service_principal" }}selected{{ end }}>{{ t "service_principal" }}</option>
@@ -136,7 +136,7 @@
       {{ end }}
 
       <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-        <button type="button" onclick="closeModal('modal-dns-edit-{{ $name }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+        <button type="button" data-modal-close="modal-dns-edit-{{ $name }}" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
         <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "save" }}</button>
       </div>
     </form>
@@ -148,7 +148,7 @@
 <div class="bg-white rounded-xl shadow-sm border border-gray-100">
   <div class="text-center py-12">
     <p class="text-slate-400">{{ t "no_dns_provider" }}</p>
-    <button class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" onclick="openModal('modal-dns-new')">{{ t "first_provider_register" }}</button>
+    <button class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" data-modal-open="modal-dns-new">{{ t "first_provider_register" }}</button>
   </div>
 </div>
 {{ end }}
@@ -158,7 +158,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ t "register_dns_provider" }}</h2>
-      <button onclick="closeModal('modal-dns-new')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-dns-new" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
     </div>
     <form method="post" action="/admin/dns-provider/new">
       <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
@@ -169,7 +169,7 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "provider_type" }}</label>
-          <select name="provider_type" id="modal_provider_type" onchange="toggleModalProviderFields(this.value)" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+          <select name="provider_type" id="modal_provider_type" data-toggle-provider class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
             <option value="route53">Route53</option>
             <option value="azure">Azure DNS</option>
             <option value="bind">BIND</option>
@@ -187,7 +187,7 @@
         <div class="mb-4 max-w-[240px]"><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "region" }}</label><input type="text" name="r53_region" value="us-east-1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
         <div class="mb-3">
           <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" id="modal-r53-use-key" onchange="document.getElementById('modal-r53-key-fields').style.display=this.checked?'':'none'" class="w-4 h-4 accent-indigo-600 rounded">
+            <input type="checkbox" id="modal-r53-use-key" data-toggle-r53-keys class="w-4 h-4 accent-indigo-600 rounded">
             <span class="text-sm text-slate-700">{{ t "use_access_key" }}</span>
           </label>
           <p class="text-xs text-slate-400 mt-1 ml-6">{{ t "iam_role_default" }}</p>
@@ -208,7 +208,7 @@
         </div>
         <div class="mb-4">
           <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "auth_type" }}</label>
-          <select name="az_auth_type" id="modal-az-auth" onchange="toggleModalAzureAuth(this.value)" class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+          <select name="az_auth_type" id="modal-az-auth" data-toggle-azure-auth class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
             <option value="system_identity">{{ t "system_identity" }}</option>
             <option value="user_identity">{{ t "user_identity" }}</option>
             <option value="service_principal">{{ t "service_principal" }}</option>
@@ -234,7 +234,7 @@
       </div>
 
       <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
-        <button type="button" onclick="closeModal('modal-dns-new')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+        <button type="button" data-modal-close="modal-dns-new" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
         <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "register" }}</button>
       </div>
     </form>

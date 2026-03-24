@@ -100,7 +100,7 @@
   <div id="refresh-control" class="flex justify-end mb-2">
     <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm">
       <span id="refresh-dot" class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-      <select id="refresh-select" onchange="setRefreshInterval(parseInt(this.value))"
+      <select id="refresh-select" data-refresh-interval
               class="text-xs bg-transparent border-none outline-none text-slate-600 cursor-pointer pr-1">
         <option value="0">{{ t "refresh_off" }}</option>
         <option value="5" selected>5s</option>
@@ -108,7 +108,7 @@
         <option value="30">30s</option>
         <option value="60">60s</option>
       </select>
-      <button id="refresh-toggle" onclick="if(autoRefreshTimer){stopAutoRefresh()}else{setRefreshInterval(parseInt(document.getElementById('refresh-select').value)||5)}"
+      <button id="refresh-toggle" data-refresh-toggle
               class="px-2 py-1 text-xs font-medium rounded-md bg-gray-100 text-gray-500 cursor-pointer">OFF</button>
     </div>
   </div>

@@ -222,6 +222,7 @@ func (s *ValkeyStore) GetSentinel(ctx context.Context, name string) (*models.Sen
 }
 
 // ListSentinels는 모든 센티널 목록을 반환한다. groupName이 비어있으면 전체를 반환한다.
+// DoMulti 파이프라인으로 일괄 조회하여 N+1 쿼리를 방지한다.
 func (s *ValkeyStore) ListSentinels(ctx context.Context, groupName string) ([]*models.Sentinel, error) {
 	ids, err := s.client.Do(ctx, s.client.B().Smembers().Key("smgr:sentinel_node:index").Build()).AsStrSlice()
 	if err != nil {
@@ -230,18 +231,27 @@ func (s *ValkeyStore) ListSentinels(ctx context.Context, groupName string) ([]*m
 		}
 		return nil, fmt.Errorf("listing sentinel index: %w", err)
 	}
-	var result []*models.Sentinel
-	for _, id := range ids {
-		sen, err := s.GetSentinel(ctx, id)
-		if err != nil {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	cmds := make(valkey.Commands, len(ids))
+	for i, id := range ids {
+		cmds[i] = s.client.B().Hgetall().Key("smgr:sentinel_node:" + id).Build()
+	}
+	results := s.client.DoMulti(ctx, cmds...)
+	var out []*models.Sentinel
+	for _, resp := range results {
+		data, err := resp.AsStrMap()
+		if err != nil || len(data) == 0 {
 			continue
 		}
+		sen := hashToSentinel(data)
 		if groupName != "" && sen.GroupName != groupName {
 			continue
 		}
-		result = append(result, sen)
+		out = append(out, sen)
 	}
-	return result, nil
+	return out, nil
 }
 
 // UpdateSentinelLastSeen은 센티널의 last_seen 필드를 갱신한다.
@@ -306,6 +316,7 @@ func (s *ValkeyStore) GetCluster(ctx context.Context, masterName string) (*model
 }
 
 // ListClusters는 등록된 모든 클러스터를 반환한다.
+// DoMulti 파이프라인으로 일괄 조회하여 N+1 쿼리를 방지한다.
 func (s *ValkeyStore) ListClusters(ctx context.Context) ([]*models.Cluster, error) {
 	ids, err := s.client.Do(ctx, s.client.B().Smembers().Key("smgr:group:index").Build()).AsStrSlice()
 	if err != nil {
@@ -314,15 +325,27 @@ func (s *ValkeyStore) ListClusters(ctx context.Context) ([]*models.Cluster, erro
 		}
 		return nil, fmt.Errorf("listing cluster index: %w", err)
 	}
-	var result []*models.Cluster
-	for _, id := range ids {
-		c, err := s.GetCluster(ctx, id)
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	cmds := make(valkey.Commands, len(ids))
+	for i, id := range ids {
+		cmds[i] = s.client.B().Get().Key("smgr:group:" + id).Build()
+	}
+	results := s.client.DoMulti(ctx, cmds...)
+	var out []*models.Cluster
+	for _, resp := range results {
+		raw, err := resp.ToString()
 		if err != nil {
 			continue
 		}
-		result = append(result, c)
+		var c models.Cluster
+		if json.Unmarshal([]byte(raw), &c) != nil {
+			continue
+		}
+		out = append(out, &c)
 	}
-	return result, nil
+	return out, nil
 }
 
 // === Admin Auth ===

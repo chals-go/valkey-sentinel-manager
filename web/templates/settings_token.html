@@ -4,7 +4,7 @@
     <h1 class="text-2xl font-bold text-slate-900">{{ t "api_token" }}</h1>
     <p class="text-sm text-slate-500 mt-1">{{ t "api_token_desc" }}</p>
   </div>
-  <button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" onclick="openModal('modal-token-new')">+ {{ t "generate_token" }}</button>
+  <button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" data-modal-open="modal-token-new">+ {{ t "generate_token" }}</button>
 </div>
 
 {{ if and .Data .Data.Tokens }}
@@ -23,13 +23,13 @@
         <td class="px-6 py-4 border-b border-gray-50 font-medium text-sm text-slate-900">{{ $name }}</td>
         <td class="px-6 py-4 border-b border-gray-50">
           <div class="flex gap-2 items-center">
-            <input type="password" id="token-{{ $name }}" value="{{ $token }}" readonly class="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono bg-gray-50 outline-none" onclick="this.select()">
+            <input type="password" id="token-{{ $name }}" value="{{ $token }}" readonly class="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono bg-gray-50 outline-none" data-select-all>
             <button type="button" class="px-3 py-2 bg-white text-slate-600 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 whitespace-nowrap"
-                    onclick="var f=document.getElementById('token-{{ $name }}'); if(f.type==='password'){f.type='text';this.textContent='{{ t "hide" }}'}else{f.type='password';this.textContent='{{ t "show" }}'}">{{ t "show" }}</button>
+                    data-toggle-token="{{ $name }}" data-label-hide="{{ t "hide" }}" data-label-show="{{ t "show" }}">{{ t "show" }}</button>
           </div>
         </td>
         <td class="px-6 py-4 border-b border-gray-50 text-right">
-          <button class="relative group p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" onclick="openModal('modal-delete-token-{{ $name }}')">
+          <button class="relative group p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-modal-open="modal-delete-token-{{ $name }}">
             {{ template "icon-delete" }}
             <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">{{ t "delete" }}</span>
           </button>
@@ -46,11 +46,11 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-red-600">{{ t "delete_token" }}</h2>
-      <button onclick="closeModal('modal-delete-token-{{ $name }}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-delete-token-{{ $name }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
     </div>
     <p class="text-sm text-slate-600 mb-6">{{ t "delete_token_confirm" }} <strong class="font-mono">{{ $name }}</strong></p>
     <div class="flex justify-end gap-3">
-      <button onclick="closeModal('modal-delete-token-{{ $name }}')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+      <button data-modal-close="modal-delete-token-{{ $name }}" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
       <form method="post" action="/admin/delete-token" class="m-0">
         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
         <input type="hidden" name="token_name" value="{{ $name }}">
@@ -66,7 +66,7 @@
   <div class="text-center py-12">
     <div class="mb-4 px-4 py-3 rounded-xl text-sm bg-red-50 text-red-700 border border-red-200 inline-block">{{ t "no_token_warning" }}</div>
     <br>
-    <button class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" onclick="openModal('modal-token-new')">{{ t "generate_token" }}</button>
+    <button class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" data-modal-open="modal-token-new">{{ t "generate_token" }}</button>
   </div>
 </div>
 {{ end }}
@@ -76,7 +76,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ t "generate_token" }}</h2>
-      <button onclick="closeModal('modal-token-new')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-token-new" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
     </div>
     <form method="post" action="/admin/regenerate-token">
       <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
@@ -86,7 +86,7 @@
       </div>
       <p class="text-xs text-slate-400 mb-4">{{ t "token_hint" }}</p>
       <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-        <button type="button" onclick="closeModal('modal-token-new')" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+        <button type="button" data-modal-close="modal-token-new" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
         <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "generate_token" }}</button>
       </div>
     </form>
