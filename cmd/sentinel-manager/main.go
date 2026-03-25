@@ -125,6 +125,8 @@ func main() {
 	var st store.Store
 	ctx := context.Background()
 
+	enc := web.NewEncryptor(cfg.EncryptionKey)
+
 	switch cfg.StoreType {
 	case "memory":
 		st = store.NewMemoryStore(cfg.EventDedupWindowSeconds)
@@ -133,7 +135,7 @@ func main() {
 		if cfg.StoreSentinels != "" {
 			addrs := strings.Split(cfg.StoreSentinels, ",")
 			var err error
-			st, err = store.NewValkeyStoreSentinel(ctx, addrs, cfg.StoreSentinelMaster, cfg.StoreDB, cfg.StorePassword, cfg.EventDedupWindowSeconds)
+			st, err = store.NewValkeyStoreSentinel(ctx, addrs, cfg.StoreSentinelMaster, cfg.StoreDB, cfg.StorePassword, cfg.EventDedupWindowSeconds, enc.Encrypt, enc.Decrypt)
 			if err != nil {
 				slog.Error("failed to connect valkey sentinel store", "error", err)
 				os.Exit(1)
@@ -146,7 +148,7 @@ func main() {
 				addr = addr[:idx]
 			}
 			var err error
-			st, err = store.NewValkeyStore(ctx, addr, cfg.StoreDB, cfg.StorePassword, cfg.EventDedupWindowSeconds)
+			st, err = store.NewValkeyStore(ctx, addr, cfg.StoreDB, cfg.StorePassword, cfg.EventDedupWindowSeconds, enc.Encrypt, enc.Decrypt)
 			if err != nil {
 				slog.Error("failed to connect valkey store", "error", err)
 				os.Exit(1)
@@ -158,7 +160,6 @@ func main() {
 	// Initialize DNS providers from stored config.
 	dnsProviders := make(map[string]dns.Provider)
 	dnsConfigs, _ := st.ListDNSProviderConfigs(ctx)
-	enc := web.NewEncryptor(cfg.EncryptionKey)
 	for name, rawCfg := range dnsConfigs {
 		decrypted := enc.DecryptSensitiveFields(rawCfg)
 		p, err := dns.NewProvider(ctx, decrypted["type"], decrypted)

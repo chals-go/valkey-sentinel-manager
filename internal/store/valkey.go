@@ -35,10 +35,12 @@ const valkeyEventHistoryMax = 500
 type ValkeyStore struct {
 	client      valkey.Client
 	dedupWindow int // seconds
+	encrypt     func(string) string
+	decrypt     func(string) string
 }
 
 // NewValkeyStore는 단독 실행 중인 Valkey 인스턴스에 연결된 ValkeyStore를 생성하여 반환한다.
-func NewValkeyStore(ctx context.Context, addr string, db int, password string, dedupWindowSeconds int) (*ValkeyStore, error) {
+func NewValkeyStore(ctx context.Context, addr string, db int, password string, dedupWindowSeconds int, encrypt, decrypt func(string) string) (*ValkeyStore, error) {
 	opts := valkey.ClientOption{
 		InitAddress: []string{addr},
 		SelectDB:    db,
@@ -53,11 +55,11 @@ func NewValkeyStore(ctx context.Context, addr string, db int, password string, d
 		return nil, fmt.Errorf("pinging valkey: %w", err)
 	}
 	slog.Info("Valkey connected", "addr", addr, "db", db)
-	return &ValkeyStore{client: client, dedupWindow: dedupWindowSeconds}, nil
+	return &ValkeyStore{client: client, dedupWindow: dedupWindowSeconds, encrypt: encrypt, decrypt: decrypt}, nil
 }
 
 // NewValkeyStoreSentinel은 Valkey 센티널을 통해 연결된 ValkeyStore를 생성하여 반환한다.
-func NewValkeyStoreSentinel(ctx context.Context, sentinelAddrs []string, masterName string, db int, password string, dedupWindowSeconds int) (*ValkeyStore, error) {
+func NewValkeyStoreSentinel(ctx context.Context, sentinelAddrs []string, masterName string, db int, password string, dedupWindowSeconds int, encrypt, decrypt func(string) string) (*ValkeyStore, error) {
 	opts := valkey.ClientOption{
 		InitAddress: sentinelAddrs,
 		SelectDB:    db,
@@ -75,7 +77,7 @@ func NewValkeyStoreSentinel(ctx context.Context, sentinelAddrs []string, masterN
 		return nil, fmt.Errorf("pinging valkey: %w", err)
 	}
 	slog.Info("Valkey Sentinel connected", "master", masterName, "sentinels", sentinelAddrs)
-	return &ValkeyStore{client: client, dedupWindow: dedupWindowSeconds}, nil
+	return &ValkeyStore{client: client, dedupWindow: dedupWindowSeconds, encrypt: encrypt, decrypt: decrypt}, nil
 }
 
 // Close는 Valkey 연결을 닫는다.
@@ -277,7 +279,11 @@ func (s *ValkeyStore) RegisterCluster(ctx context.Context, c *models.Cluster) er
 	if err != nil {
 		return fmt.Errorf("marshaling cluster: %w", err)
 	}
-	if err := s.client.Do(ctx, s.client.B().Set().Key(key).Value(string(data)).Build()).Error(); err != nil {
+	val := string(data)
+	if s.encrypt != nil {
+		val = s.encrypt(val)
+	}
+	if err := s.client.Do(ctx, s.client.B().Set().Key(key).Value(val).Build()).Error(); err != nil {
 		return fmt.Errorf("registering cluster: %w", err)
 	}
 	if err := s.client.Do(ctx, s.client.B().Sadd().Key("smgr:group:index").Member(c.MasterName).Build()).Error(); err != nil {
@@ -307,6 +313,9 @@ func (s *ValkeyStore) GetCluster(ctx context.Context, masterName string) (*model
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("getting cluster: %w", err)
+	}
+	if s.decrypt != nil {
+		raw = s.decrypt(raw)
 	}
 	var c models.Cluster
 	if err := json.Unmarshal([]byte(raw), &c); err != nil {
@@ -338,6 +347,9 @@ func (s *ValkeyStore) ListClusters(ctx context.Context) ([]*models.Cluster, erro
 		raw, err := resp.ToString()
 		if err != nil {
 			continue
+		}
+		if s.decrypt != nil {
+			raw = s.decrypt(raw)
 		}
 		var c models.Cluster
 		if json.Unmarshal([]byte(raw), &c) != nil {
@@ -378,11 +390,17 @@ func (s *ValkeyStore) GetAPIToken(ctx context.Context) (string, error) {
 		}
 		return "", fmt.Errorf("getting api token: %w", err)
 	}
+	if s.decrypt != nil {
+		val = s.decrypt(val)
+	}
 	return val, nil
 }
 
 // SetAPIToken은 API 토큰을 저장한다.
 func (s *ValkeyStore) SetAPIToken(ctx context.Context, token string) error {
+	if s.encrypt != nil {
+		token = s.encrypt(token)
+	}
 	return s.client.Do(ctx, s.client.B().Set().Key("smgr:api:token").Value(token).Build()).Error()
 }
 
@@ -402,11 +420,17 @@ func (s *ValkeyStore) GetSlackWebhookURL(ctx context.Context) (string, error) {
 		}
 		return "", fmt.Errorf("getting slack webhook url: %w", err)
 	}
+	if s.decrypt != nil {
+		val = s.decrypt(val)
+	}
 	return val, nil
 }
 
 // SetSlackWebhookURL은 Slack 웹훅 URL을 저장한다.
 func (s *ValkeyStore) SetSlackWebhookURL(ctx context.Context, url string) error {
+	if s.encrypt != nil {
+		url = s.encrypt(url)
+	}
 	return s.client.Do(ctx, s.client.B().Set().Key("smgr:slack:webhook_url").Value(url).Build()).Error()
 }
 
