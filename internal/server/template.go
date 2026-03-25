@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -61,6 +62,10 @@ func TemplateFuncMap(t func(string) string) template.FuncMap {
 			return s
 		},
 		"csrfToken": func() string { return "" },
+		"toJSON": func(v any) template.JS {
+			b, _ := json.Marshal(v)
+			return template.JS(b)
+		},
 		"mapLen": func(m any) int {
 			switch v := m.(type) {
 			case map[string]any:

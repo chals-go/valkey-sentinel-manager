@@ -331,6 +331,7 @@ func (h *AdminHandler) clustersPageData(ctx context.Context) map[string]any {
 		"SentinelPingResults":  h.healthCheck.GetAllStatuses(),
 		"ClusterPage":          1,
 		"ClusterTotalPages":    1,
+		"ExistingMasters":      existingMastersByGroup(clusters),
 	}
 }
 
@@ -431,6 +432,7 @@ func (h *AdminHandler) Clusters(w http.ResponseWriter, r *http.Request) {
 			"SentinelPingResults":  h.healthCheck.GetAllStatuses(),
 			"ClusterPage":          cp,
 			"ClusterTotalPages":    totalPages,
+			"ExistingMasters":      existingMastersByGroup(clusters),
 		},
 	})
 }
@@ -450,11 +452,13 @@ func (h *AdminHandler) ClusterFormPage(w http.ResponseWriter, r *http.Request) {
 	for name, cfg := range dnsConfigs {
 		dnsProvidersWithZone[name] = cfg["zone_name"]
 	}
+	allClusters, _ := h.store.ListClusters(ctx)
 	h.render(w, r, "base", PageData{
 		Page: "cluster-form",
 		Data: map[string]any{
 			"SentinelClusterNames": sortedKeys(sentinelClusterNames),
 			"DNSProviders":         dnsProvidersWithZone,
+			"ExistingMasters":      existingMastersByGroup(allClusters),
 		},
 	})
 }
@@ -1467,5 +1471,14 @@ func sortedKeys(m map[string]bool) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// existingMastersByGroup는 클러스터 목록에서 센티널 그룹별 마스터 이름 목록을 반환한다.
+func existingMastersByGroup(clusters []*models.Cluster) map[string][]string {
+	result := make(map[string][]string)
+	for _, c := range clusters {
+		result[c.GroupName] = append(result[c.GroupName], c.MasterName)
+	}
+	return result
 }
 
