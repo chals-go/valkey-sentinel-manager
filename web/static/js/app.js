@@ -96,6 +96,15 @@ document.addEventListener('change', function(e) {
     if (provider) { provider.required = !off; }
     return;
   }
+  // Add DNS endpoint toggle (edit page, DNS disabled clusters)
+  var addDns = e.target.closest('[data-toggle-add-dns]');
+  if (addDns) {
+    var fields = document.getElementById('edit-dns-fields');
+    if (fields) { fields.classList.toggle('hidden', !addDns.checked); }
+    var prov = document.querySelector('#edit-dns-fields [name="dns_provider"]');
+    if (prov) { prov.required = addDns.checked; }
+    return;
+  }
 });
 
 // Input delegation: DNS preview

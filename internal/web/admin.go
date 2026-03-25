@@ -634,9 +634,53 @@ func (h *AdminHandler) ClusterEditSubmit(w http.ResponseWriter, r *http.Request)
 		failoverTimeout = 30000
 	}
 
-	cluster.PrimaryDNS.TTL = dnsTTL
-	if cluster.ReplicaDNS != nil {
-		cluster.ReplicaDNS.TTL = dnsTTL
+	// DNS 추가 (DNS disabled → DNS enabled 전환)
+	addDNS := r.FormValue("add_dns") == "on"
+	if addDNS && cluster.DNSProvider == "" {
+		dnsProvider := strings.TrimSpace(r.FormValue("dns_provider"))
+		if dnsProvider != "" {
+			dnsCfg, _ := h.store.GetDNSProviderConfig(ctx, dnsProvider)
+			zoneName := ""
+			if dnsCfg != nil {
+				zoneName = dnsCfg["zone_name"]
+			}
+			primaryRecord := strings.TrimSpace(r.FormValue("primary_record"))
+			if primaryRecord == "" {
+				primaryRecord = fmt.Sprintf("primary-%s", cluster.MasterName)
+			}
+			cluster.DNSProvider = dnsProvider
+			cluster.PrimaryDNS = models.DNSMapping{Zone: zoneName, RecordName: primaryRecord, RecordType: "A", TTL: dnsTTL}
+
+			// DNS 레코드 생성
+			detail := core.GetMasterDetail(ctx, cluster.SentinelAddrs, cluster.MasterName, cluster.SentinelPassword)
+			provider := h.dnsProviders[dnsProvider]
+			if detail != nil && provider != nil {
+				provider.UpdateRecord(ctx, cluster.PrimaryDNS.Zone, cluster.PrimaryDNS.RecordName, cluster.PrimaryDNS.RecordType, detail.MasterIP, cluster.PrimaryDNS.TTL)
+
+				createReplicaDNS := r.FormValue("create_replica_dns") == "on"
+				if createReplicaDNS && len(detail.Slaves) > 0 {
+					rRec := strings.Replace(primaryRecord, "primary", "replica", 1)
+					replicaDNS := &models.DNSMapping{Zone: zoneName, RecordName: rRec, RecordType: "A", TTL: dnsTTL}
+					cluster.ReplicaDNS = replicaDNS
+					cluster.MultiReplica = len(detail.Slaves) > 1
+					if len(detail.Slaves) == 1 {
+						provider.UpdateRecord(ctx, replicaDNS.Zone, rRec, "A", detail.Slaves[0].IP, replicaDNS.TTL)
+					} else {
+						var ips []string
+						for _, s := range detail.Slaves {
+							ips = append(ips, s.IP)
+						}
+						provider.UpdateRecordValues(ctx, replicaDNS.Zone, rRec, "A", ips, replicaDNS.TTL)
+					}
+				}
+			}
+		}
+	} else if cluster.DNSProvider != "" {
+		// 기존 DNS 활성화 클러스터: TTL만 업데이트
+		cluster.PrimaryDNS.TTL = dnsTTL
+		if cluster.ReplicaDNS != nil {
+			cluster.ReplicaDNS.TTL = dnsTTL
+		}
 	}
 	h.store.RegisterCluster(ctx, cluster)
 
