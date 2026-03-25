@@ -3,11 +3,6 @@ set -euo pipefail
 
 # ============================================================================
 # Valkey Sentinel Manager — Unified Install Script
-#
-# Usage:
-#   sudo bash deploy/install.sh sentinel-manager   # Install sentinel-manager
-#   sudo bash deploy/install.sh sentinel-agent      # Install sentinel-agent
-#   sudo bash deploy/install.sh all                 # Install both
 # ============================================================================
 
 INSTALL_DIR="/usr/local/bin"
@@ -18,31 +13,82 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 CYAN='\033[0;36m'
+BOLD='\033[1m'
+DIM='\033[2m'
 NC='\033[0m'
 
 info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
-# ---------- Usage ----------
-usage() {
-    echo ""
-    echo -e "${CYAN}Valkey Sentinel Manager — Installer${NC}"
-    echo ""
-    echo "Usage:"
-    echo "  sudo bash deploy/install.sh <component>"
-    echo ""
-    echo "Components:"
-    echo "  sentinel-manager   Install Sentinel Manager (web UI + API server)"
-    echo "  sentinel-agent     Install Sentinel Agent (reconfig/notify scripts)"
-    echo "  all                Install both components"
-    echo ""
-    exit 1
+# ---------- Help / Usage ----------
+show_help() {
+    cat <<HELP
+
+${BOLD}Valkey Sentinel Manager — Installer${NC}
+
+${BOLD}USAGE${NC}
+    sudo bash deploy/install.sh <component> [options]
+
+${BOLD}COMPONENTS${NC}
+    ${CYAN}sentinel-manager${NC}   Web UI + REST API server for managing Valkey Sentinel DNS failover.
+                       Runs as a systemd service.
+
+    ${CYAN}sentinel-agent${NC}     CLI tool called by Valkey Sentinel via notification-script and
+                       client-reconfig-script. Installed with Valkey user permissions.
+
+    ${CYAN}all${NC}                Install both sentinel-manager and sentinel-agent.
+
+${BOLD}OPTIONS${NC}
+    -h, --help         Show this help message
+
+${BOLD}EXAMPLES${NC}
+    ${DIM}# Install sentinel-manager only${NC}
+    sudo bash deploy/install.sh sentinel-manager
+
+    ${DIM}# Install sentinel-agent only${NC}
+    sudo bash deploy/install.sh sentinel-agent
+
+    ${DIM}# Install both${NC}
+    sudo bash deploy/install.sh all
+
+${BOLD}WHAT GETS INSTALLED${NC}
+
+  ${CYAN}sentinel-manager:${NC}
+    Binary      ${DIM}→${NC}  /usr/local/bin/sentinel-manager             ${DIM}(755, sentinel-manager:sentinel-manager)${NC}
+    Config      ${DIM}→${NC}  /etc/sentinel-manager/config.yaml           ${DIM}(600, sentinel-manager:sentinel-manager)${NC}
+    Logs        ${DIM}→${NC}  /var/log/sentinel-manager/                  ${DIM}(sentinel-manager:sentinel-manager)${NC}
+    Service     ${DIM}→${NC}  /etc/systemd/system/sentinel-manager.service
+    User        ${DIM}→${NC}  sentinel-manager (system user, no login)
+
+  ${CYAN}sentinel-agent:${NC}
+    Binary      ${DIM}→${NC}  /usr/local/bin/sentinel-agent               ${DIM}(755, <valkey-user>:<valkey-group>)${NC}
+    Symlinks    ${DIM}→${NC}  /usr/local/bin/sentinel-agent-reconfig      ${DIM}→ sentinel-agent${NC}
+                   /usr/local/bin/sentinel-agent-notify        ${DIM}→ sentinel-agent${NC}
+    Config      ${DIM}→${NC}  /etc/valkey/sentinel-agent.yaml             ${DIM}(640, <valkey-user>:<valkey-group>)${NC}
+
+    ${DIM}* <valkey-user> is auto-detected from running valkey-sentinel/valkey-server process,
+      binary ownership, or system user (valkey → redis → nobody fallback).${NC}
+
+${BOLD}PREREQUISITES${NC}
+    • Root privileges (sudo)
+    • Go 1.24+ (for building) or pre-built binaries in bin/
+    • make (for build targets)
+
+HELP
+    exit 0
 }
 
 # ---------- Pre-checks ----------
+# Handle help flag before root check
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help) show_help ;;
+    esac
+done
+
+[ $# -lt 1 ] && show_help
 [ "$(id -u)" -ne 0 ] && error "Run as root: sudo bash deploy/install.sh <component>"
-[ $# -lt 1 ] && usage
 
 COMPONENT="$1"
 case "$COMPONENT" in
@@ -142,6 +188,33 @@ build_component() {
     info "Build complete: $binary"
 }
 
+# ---------- Summary Table ----------
+print_summary() {
+    local component="$1"
+    echo ""
+    echo -e "${BOLD}  Installed Files:${NC}"
+    echo -e "  ${DIM}────────────────────────────────────────────────────────────────${NC}"
+
+    if [ "$component" = "manager" ] || [ "$component" = "all" ]; then
+        local MGR_USER="sentinel-manager"
+        printf "  %-12s %-46s %s\n" "Binary"   "$INSTALL_DIR/sentinel-manager" "(755, $MGR_USER:$MGR_USER)"
+        printf "  %-12s %-46s %s\n" "Config"   "/etc/sentinel-manager/config.yaml" "(600, $MGR_USER:$MGR_USER)"
+        printf "  %-12s %-46s %s\n" "Logs"     "/var/log/sentinel-manager/" "($MGR_USER:$MGR_USER)"
+        printf "  %-12s %-46s %s\n" "Service"  "/etc/systemd/system/sentinel-manager.service" "(enabled)"
+        printf "  %-12s %-46s %s\n" "User"     "$MGR_USER" "(system, nologin)"
+    fi
+
+    if [ "$component" = "agent" ] || [ "$component" = "all" ]; then
+        [ "$component" = "all" ] && echo -e "  ${DIM}────────────────────────────────────────────────────────────────${NC}"
+        printf "  %-12s %-46s %s\n" "Binary"   "$INSTALL_DIR/sentinel-agent" "(755, $VALKEY_USER:$VALKEY_GROUP)"
+        printf "  %-12s %-46s %s\n" "Symlink"  "$INSTALL_DIR/sentinel-agent-reconfig" "→ sentinel-agent"
+        printf "  %-12s %-46s %s\n" "Symlink"  "$INSTALL_DIR/sentinel-agent-notify" "→ sentinel-agent"
+        printf "  %-12s %-46s %s\n" "Config"   "/etc/valkey/sentinel-agent.yaml" "(640, $VALKEY_USER:$VALKEY_GROUP)"
+    fi
+
+    echo -e "  ${DIM}────────────────────────────────────────────────────────────────${NC}"
+}
+
 # ---------- Install sentinel-manager ----------
 install_manager() {
     echo ""
@@ -171,7 +244,7 @@ install_manager() {
     if [ ! -f "$CONFIG_DIR/config.yaml" ]; then
         if [ -f "$SCRIPT_DIR/config.yaml.example" ]; then
             cp "$SCRIPT_DIR/config.yaml.example" "$CONFIG_DIR/config.yaml"
-            info "Created: $CONFIG_DIR/config.yaml (edit before starting)"
+            info "Created: $CONFIG_DIR/config.yaml"
         else
             warn "config.yaml.example not found, skipping config copy"
         fi
@@ -184,7 +257,6 @@ install_manager() {
     # 4. Log directory
     mkdir -p "$LOG_DIR"
     chown -R "$SERVICE_USER":"$SERVICE_USER" "$LOG_DIR"
-    info "Log dir: $LOG_DIR"
 
     # 5. Create systemd service
     cat > /etc/systemd/system/sentinel-manager.service <<UNIT
@@ -220,18 +292,7 @@ UNIT
 
     systemctl daemon-reload
     systemctl enable sentinel-manager
-    info "Service: sentinel-manager.service enabled"
-
-    echo ""
-    info "sentinel-manager installed successfully!"
-    echo ""
-    echo "  Next steps:"
-    echo "    1. Edit config:    sudo vi $CONFIG_DIR/config.yaml"
-    echo "    2. Start service:  sudo systemctl start sentinel-manager"
-    echo "    3. Check status:   sudo systemctl status sentinel-manager"
-    echo "    4. View logs:      sudo journalctl -u sentinel-manager -f"
-    echo "    5. Open browser:   http://<server-ip>:8000/admin/"
-    echo "       Default login:  admin / admin"
+    info "Service: sentinel-manager.service (enabled, daemon-reloaded)"
 }
 
 # ---------- Install sentinel-agent ----------
@@ -247,7 +308,7 @@ install_agent() {
     # 1. Install binary
     install -m 755 "$SCRIPT_DIR/bin/sentinel-agent" "$INSTALL_DIR/sentinel-agent"
     chown "$VALKEY_USER":"$VALKEY_GROUP" "$INSTALL_DIR/sentinel-agent"
-    info "Installed: $INSTALL_DIR/sentinel-agent ($VALKEY_USER:$VALKEY_GROUP)"
+    info "Installed: $INSTALL_DIR/sentinel-agent"
 
     # 2. Create symlinks
     ln -sf "$INSTALL_DIR/sentinel-agent" "$INSTALL_DIR/sentinel-agent-reconfig"
@@ -259,7 +320,7 @@ install_agent() {
     if [ ! -f "$AGENT_CONFIG_DIR/sentinel-agent.yaml" ]; then
         cat > "$AGENT_CONFIG_DIR/sentinel-agent.yaml" <<AGENTCFG
 # Sentinel Agent Configuration
-# This agent is called by Valkey Sentinel via notification-script and client-reconfig-script.
+# Called by Valkey Sentinel via notification-script and client-reconfig-script.
 
 # Sentinel Manager server URL
 monitor_url: "http://localhost:8000"
@@ -281,40 +342,63 @@ retry_count: 2
 AGENTCFG
         chown "$VALKEY_USER":"$VALKEY_GROUP" "$AGENT_CONFIG_DIR/sentinel-agent.yaml"
         chmod 640 "$AGENT_CONFIG_DIR/sentinel-agent.yaml"
-        info "Created: $AGENT_CONFIG_DIR/sentinel-agent.yaml (edit before use)"
+        info "Created: $AGENT_CONFIG_DIR/sentinel-agent.yaml"
     else
         info "Exists: $AGENT_CONFIG_DIR/sentinel-agent.yaml (not overwritten)"
     fi
+}
 
+# ---------- Next Steps ----------
+print_next_steps() {
+    local component="$1"
     echo ""
-    info "sentinel-agent installed successfully!"
-    echo ""
-    echo "  Installed as: $VALKEY_USER:$VALKEY_GROUP"
-    echo ""
-    echo "  Next steps:"
-    echo "    1. Edit config:  sudo vi $AGENT_CONFIG_DIR/sentinel-agent.yaml"
-    echo "    2. Set api_key, sentinel_node_name, group_name, monitor_url"
-    echo "    3. Configure Sentinel scripts in sentinel.conf:"
-    echo "       sentinel notification-script <master> $INSTALL_DIR/sentinel-agent-notify"
-    echo "       sentinel client-reconfig-script <master> $INSTALL_DIR/sentinel-agent-reconfig"
+    echo -e "${BOLD}  Next Steps:${NC}"
+
+    if [ "$component" = "manager" ] || [ "$component" = "all" ]; then
+        echo ""
+        echo -e "  ${CYAN}sentinel-manager:${NC}"
+        echo "    1. Edit config:    sudo vi /etc/sentinel-manager/config.yaml"
+        echo "    2. Start service:  sudo systemctl start sentinel-manager"
+        echo "    3. Check status:   sudo systemctl status sentinel-manager"
+        echo "    4. View logs:      sudo journalctl -u sentinel-manager -f"
+        echo "    5. Open browser:   http://<server-ip>:8000/admin/"
+        echo "       Default login:  admin / admin"
+    fi
+
+    if [ "$component" = "agent" ] || [ "$component" = "all" ]; then
+        echo ""
+        echo -e "  ${CYAN}sentinel-agent:${NC}"
+        echo "    1. Edit config:  sudo vi /etc/valkey/sentinel-agent.yaml"
+        echo "    2. Set api_key, sentinel_node_name, group_name, monitor_url"
+        echo "    3. Add to sentinel.conf:"
+        echo "       sentinel notification-script <master> $INSTALL_DIR/sentinel-agent-notify"
+        echo "       sentinel client-reconfig-script <master> $INSTALL_DIR/sentinel-agent-reconfig"
+    fi
 }
 
 # ---------- Main ----------
 detect_os
 
+SUMMARY_TYPE=""
+
 case "$COMPONENT" in
     sentinel-manager)
         install_manager
+        SUMMARY_TYPE="manager"
         ;;
     sentinel-agent)
         install_agent
+        SUMMARY_TYPE="agent"
         ;;
     all)
         install_manager
-        echo ""
         install_agent
+        SUMMARY_TYPE="all"
         ;;
 esac
 
 echo ""
 echo -e "${GREEN}=== Installation complete ===${NC}"
+print_summary "$SUMMARY_TYPE"
+print_next_steps "$SUMMARY_TYPE"
+echo ""
