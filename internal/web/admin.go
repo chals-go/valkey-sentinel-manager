@@ -623,16 +623,29 @@ func (h *AdminHandler) LoadSentinelsQuery(w http.ResponseWriter, r *http.Request
 	}
 
 	sents, _ := h.store.ListSentinels(ctx, clusterName)
+	if len(sents) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"masters":[],"error":"no sentinel nodes found for cluster: ` + clusterName + `"}`))
+		return
+	}
 	var addrs []string
-	var sentinelPassword string
 	for _, s := range sents {
 		addrs = append(addrs, fmt.Sprintf("%s:%d", s.Host, s.Port))
+	}
+
+	// 센티널 비밀번호는 해당 그룹의 기존 클러스터에서 가져오기 시도
+	var sentinelPassword string
+	existingClusters, _ := h.store.ListClusters(ctx)
+	for _, c := range existingClusters {
+		if c.GroupName == clusterName && c.SentinelPassword != "" {
+			sentinelPassword = c.SentinelPassword
+			break
+		}
 	}
 
 	masters := core.ListSentinelMasters(ctx, addrs, sentinelPassword)
 
 	// 이미 등록된 클러스터 목록
-	existingClusters, _ := h.store.ListClusters(ctx)
 	registered := make(map[string]bool)
 	for _, c := range existingClusters {
 		registered[c.MasterName] = true
