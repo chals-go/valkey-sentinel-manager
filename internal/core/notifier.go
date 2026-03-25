@@ -43,7 +43,7 @@ func buildMessageText(event *models.FailoverEvent, cluster *models.Cluster) stri
 	}
 
 	var dnsInfo string
-	if cluster != nil {
+	if cluster != nil && cluster.DNSProvider != "" {
 		switch event.EventType {
 		case models.EventTypeFailover:
 			fqdn := cluster.PrimaryDNS.RecordName + "." + cluster.PrimaryDNS.Zone
