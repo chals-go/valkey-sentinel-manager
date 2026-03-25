@@ -96,13 +96,16 @@ document.addEventListener('change', function(e) {
     if (provider) { provider.required = !off; }
     return;
   }
-  // Add DNS endpoint toggle (edit page, DNS disabled clusters)
+  // Add DNS endpoint toggle (edit page/modal, DNS disabled clusters)
   var addDns = e.target.closest('[data-toggle-add-dns]');
   if (addDns) {
-    var fields = document.getElementById('edit-dns-fields');
+    var form = addDns.closest('form') || addDns.closest('.modal-overlay');
+    var fields = form ? form.querySelector('[data-dns-add-fields]') : document.getElementById('edit-dns-fields');
     if (fields) { fields.classList.toggle('hidden', !addDns.checked); }
-    var prov = document.querySelector('#edit-dns-fields [name="dns_provider"]');
-    if (prov) { prov.required = addDns.checked; }
+    if (fields) {
+      var prov = fields.querySelector('[name="dns_provider"]');
+      if (prov) prov.required = addDns.checked;
+    }
     return;
   }
 });
