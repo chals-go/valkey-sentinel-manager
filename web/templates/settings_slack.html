@@ -35,7 +35,7 @@
 
 {{ if and .Data .Data.WebhookURL }}
 <!-- Delete webhook modal -->
-<div id="modal-delete-webhook" class="modal-overlay">
+<div id="modal-delete-webhook" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-red-600">{{ t "delete" }} {{ t "notification" }}</h2>

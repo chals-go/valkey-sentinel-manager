@@ -13,6 +13,8 @@ import (
 	"github.com/chals-go/valkey-sentinel-manager/internal/store"
 )
 
+const lockTTL = 30 * time.Second
+
 // FailoverManager는 이벤트 처리와 DNS 업데이트를 조율하는 구조체이다.
 type FailoverManager struct {
 	store          store.Store
@@ -92,7 +94,7 @@ func (fm *FailoverManager) handleFailover(ctx context.Context, cluster *models.C
 	}
 
 	lockKey := fmt.Sprintf("%s:%s:failover", cluster.GroupName, cluster.MasterName)
-	acquired, _ := fm.store.AcquireLock(ctx, lockKey, 30*time.Second)
+	acquired, _ := fm.store.AcquireLock(ctx, lockKey, lockTTL)
 	if !acquired {
 		slog.Info("lock not acquired, another instance handling", "key", lockKey)
 		return
@@ -175,7 +177,7 @@ func (fm *FailoverManager) handleReplicaDown(ctx context.Context, cluster *model
 	}
 
 	lockKey := fmt.Sprintf("%s:replica_dns", cluster.GroupName)
-	acquired, _ := fm.store.AcquireLock(ctx, lockKey, 30*time.Second)
+	acquired, _ := fm.store.AcquireLock(ctx, lockKey, lockTTL)
 	if !acquired {
 		return
 	}
@@ -225,7 +227,7 @@ func (fm *FailoverManager) handleReplicaUp(ctx context.Context, cluster *models.
 	}
 
 	lockKey := fmt.Sprintf("%s:replica_dns", cluster.GroupName)
-	acquired, _ := fm.store.AcquireLock(ctx, lockKey, 30*time.Second)
+	acquired, _ := fm.store.AcquireLock(ctx, lockKey, lockTTL)
 	if !acquired {
 		return
 	}

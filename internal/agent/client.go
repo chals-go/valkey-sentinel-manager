@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -38,6 +39,7 @@ func SendEvent(cfg *Config, payload map[string]any) bool {
 			log.Printf("[WARN] send failed (attempt %d/%d): %v", attempt, cfg.RetryCount, err)
 			continue
 		}
+		io.Copy(io.Discard, resp.Body) //nolint:errcheck
 		resp.Body.Close()
 
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {

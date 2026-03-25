@@ -32,9 +32,9 @@ func NewEncryptor(keyB64 string) *Encryptor {
 		if err == nil && len(key) == 32 {
 			return &Encryptor{key: key}
 		}
-		slog.Warn("invalid encryption key, generating temporary key")
+		slog.Error("invalid encryption key format, generating temporary key — encrypted data will be LOST on restart")
 	} else {
-		slog.Warn("SMGR_ENCRYPTION_KEY not set, generating temporary key — encrypted data won't survive restart")
+		slog.Error("encryption_key not set, generating temporary key — encrypted data will be LOST on restart. Set encryption_key in config.yaml")
 	}
 	key := make([]byte, 32)
 	if _, err := rand.Read(key); err != nil {

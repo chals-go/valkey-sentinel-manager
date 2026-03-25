@@ -42,7 +42,7 @@
 
 <!-- Delete token modals -->
 {{ range $name, $token := .Data.Tokens }}
-<div id="modal-delete-token-{{ $name }}" class="modal-overlay">
+<div id="modal-delete-token-{{ $name }}" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-red-600">{{ t "delete_token" }}</h2>
@@ -72,7 +72,7 @@
 {{ end }}
 
 <!-- Generate new token modal -->
-<div id="modal-token-new" class="modal-overlay">
+<div id="modal-token-new" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ t "generate_token" }}</h2>

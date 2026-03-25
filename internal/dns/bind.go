@@ -74,6 +74,7 @@ func (p *BINDProvider) UpdateRecord(ctx context.Context, zone, name, recordType,
 		return fmt.Errorf("bind update record: %w", err)
 	}
 	defer resp.Body.Close()
+	io.ReadAll(resp.Body) //nolint:errcheck
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("bind update record: HTTP %d", resp.StatusCode)
 	}
@@ -100,6 +101,7 @@ func (p *BINDProvider) UpdateRecordValues(ctx context.Context, zone, name, recor
 		return fmt.Errorf("bind update record values: %w", err)
 	}
 	defer resp.Body.Close()
+	io.ReadAll(resp.Body) //nolint:errcheck
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("bind update record values: HTTP %d", resp.StatusCode)
 	}
@@ -117,6 +119,7 @@ func (p *BINDProvider) AddRecordValue(ctx context.Context, zone, name, recordTyp
 		return fmt.Errorf("bind add record value: %w", err)
 	}
 	defer resp.Body.Close()
+	io.ReadAll(resp.Body) //nolint:errcheck
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("bind add record value: HTTP %d", resp.StatusCode)
 	}
@@ -132,6 +135,7 @@ func (p *BINDProvider) RemoveRecordValue(ctx context.Context, zone, name, record
 		return fmt.Errorf("bind remove record value: %w", err)
 	}
 	defer resp.Body.Close()
+	io.ReadAll(resp.Body) //nolint:errcheck
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("bind remove record value: HTTP %d", resp.StatusCode)
 	}
@@ -146,6 +150,7 @@ func (p *BINDProvider) DeleteRecord(ctx context.Context, zone, name, recordType 
 		return fmt.Errorf("bind delete record: %w", err)
 	}
 	defer resp.Body.Close()
+	io.ReadAll(resp.Body) //nolint:errcheck
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("bind delete record: HTTP %d", resp.StatusCode)
 	}
@@ -188,6 +193,7 @@ func (p *BINDProvider) HealthCheck(ctx context.Context) error {
 		return err
 	}
 	defer resp.Body.Close()
+	io.ReadAll(resp.Body) //nolint:errcheck
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("bind health check: HTTP %d", resp.StatusCode)
 	}

@@ -86,14 +86,14 @@ func (sm *SessionManager) ClearLoginFailures(ip string) {
 }
 
 // HashPassword는 무작위 솔트를 사용하여 SHA-256으로 비밀번호를 해시한다.
-func HashPassword(password string) string {
+func HashPassword(password string) (string, error) {
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
-		panic("crypto/rand failed: " + err.Error())
+		return "", fmt.Errorf("crypto/rand failed: %w", err)
 	}
 	saltHex := hex.EncodeToString(salt)
 	hash := sha256.Sum256([]byte(saltHex + password))
-	return saltHex + saltSep + hex.EncodeToString(hash[:])
+	return saltHex + saltSep + hex.EncodeToString(hash[:]), nil
 }
 
 // VerifyHash는 입력된 비밀번호와 저장된 해시값을 비교하여 일치 여부를 반환한다.
@@ -112,8 +112,8 @@ func VerifyHash(password, stored string) bool {
 }
 
 // VerifyPassword는 입력된 비밀번호가 저장소에 저장된 관리자 비밀번호 해시와 일치하는지 확인한다.
-func (sm *SessionManager) VerifyPassword(ctx interface{ Value(any) any }, password string) bool {
-	hash, err := sm.store.GetAdminPasswordHash(context.Background())
+func (sm *SessionManager) VerifyPassword(ctx context.Context, password string) bool {
+	hash, err := sm.store.GetAdminPasswordHash(ctx)
 	if err != nil || hash == "" {
 		return password == defaultPassword
 	}
@@ -121,10 +121,10 @@ func (sm *SessionManager) VerifyPassword(ctx interface{ Value(any) any }, passwo
 }
 
 // CreateSession은 새 세션을 생성하고 세션 ID를 반환한다.
-func (sm *SessionManager) CreateSession() string {
+func (sm *SessionManager) CreateSession() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		panic("crypto/rand failed: " + err.Error())
+		return "", fmt.Errorf("crypto/rand failed: %w", err)
 	}
 	id := hex.EncodeToString(b)
 	sm.mu.Lock()
@@ -132,7 +132,7 @@ func (sm *SessionManager) CreateSession() string {
 	sm.csrfTokens[id] = generateCSRFToken()
 	sm.cleanupLocked()
 	sm.mu.Unlock()
-	return id
+	return id, nil
 }
 
 // ValidateSession은 요청의 세션 쿠키가 유효한지 확인한다.
@@ -222,7 +222,10 @@ func (sm *SessionManager) getOrCreateCSRFToken(sessionID string) string {
 
 // ChangePassword는 새 관리자 비밀번호를 해시하여 저장소에 저장한다.
 func (sm *SessionManager) ChangePassword(password string) error {
-	hash := HashPassword(password)
+	hash, err := HashPassword(password)
+	if err != nil {
+		return err
+	}
 	return sm.store.SetAdminPasswordHash(context.Background(), hash)
 }
 
@@ -233,10 +236,10 @@ func (sm *SessionManager) IsDefaultPassword() bool {
 }
 
 // GenerateAPIToken은 smgr_ 접두사가 붙은 새 API 토큰을 생성하여 반환한다.
-func GenerateAPIToken() string {
+func GenerateAPIToken() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		panic("crypto/rand failed: " + err.Error())
+		return "", fmt.Errorf("crypto/rand failed: %w", err)
 	}
-	return fmt.Sprintf("smgr_%s", hex.EncodeToString(b))
+	return fmt.Sprintf("smgr_%s", hex.EncodeToString(b)), nil
 }

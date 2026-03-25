@@ -74,10 +74,8 @@ func buildMessageText(event *models.FailoverEvent, cluster *models.Cluster) stri
 	return strings.Join(lines, "\n")
 }
 
-// SendSlackNotification은 이벤트 알림을 Slack 인커밍 웹훅으로 전송한다.
-func SendSlackNotification(ctx context.Context, webhookURL string, event *models.FailoverEvent, cluster *models.Cluster, channel string) bool {
-	text := buildMessageText(event, cluster)
-
+// postSlackWebhook은 공통 Slack 웹훅 HTTP POST 로직을 처리하는 내부 헬퍼 함수다.
+func postSlackWebhook(ctx context.Context, webhookURL, text, channel string) bool {
 	payload := map[string]string{
 		"text":       text,
 		"username":   "Sentinel Manager",
@@ -106,91 +104,35 @@ func SendSlackNotification(ctx context.Context, webhookURL string, event *models
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		slog.Error("slack notification failed", "error", err)
+		slog.Error("slack webhook post failed", "error", err)
 		return false
 	}
 	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
 
-	if resp.StatusCode == http.StatusOK {
+// SendSlackNotification은 이벤트 알림을 Slack 인커밍 웹훅으로 전송한다.
+func SendSlackNotification(ctx context.Context, webhookURL string, event *models.FailoverEvent, cluster *models.Cluster, channel string) bool {
+	text := buildMessageText(event, cluster)
+	ok := postSlackWebhook(ctx, webhookURL, text, channel)
+	if ok {
 		slog.Info("slack notification sent", "summary", strings.SplitN(text, "\n", 2)[0])
-		return true
+	} else {
+		slog.Warn("slack notification failed")
 	}
-	slog.Warn("slack notification failed", "status", resp.StatusCode)
-	return false
+	return ok
 }
 
 // SendSentinelDownSlack은 센티널 노드 다운 알림을 Slack으로 전송한다.
 func SendSentinelDownSlack(ctx context.Context, webhookURL, channel, nodeName, addr, groupName string) bool {
 	text := fmt.Sprintf(":red_circle: *Sentinel Node Down*\nGroup : %s\nNode  : %s\nAddr  : %s\nTime  : %s (KST)",
 		groupName, nodeName, addr, time.Now().Format("2006-01-02 15:04:05"))
-
-	payload := map[string]string{
-		"text":       text,
-		"username":   "Sentinel Manager",
-		"icon_emoji": ":satellite:",
-	}
-	if channel != "" {
-		if !strings.HasPrefix(channel, "#") {
-			channel = "#" + channel
-		}
-		payload["channel"] = channel
-	}
-
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return false
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(body))
-	if err != nil {
-		return false
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		slog.Error("sentinel down slack failed", "error", err)
-		return false
-	}
-	defer resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
+	return postSlackWebhook(ctx, webhookURL, text, channel)
 }
 
 // SendSentinelUpSlack은 센티널 노드 복구 알림을 Slack으로 전송한다.
 func SendSentinelUpSlack(ctx context.Context, webhookURL, channel, nodeName, addr, groupName string) bool {
 	text := fmt.Sprintf(":large_green_circle: *Sentinel Node Up*\nGroup : %s\nNode  : %s\nAddr  : %s\nTime  : %s (KST)",
 		groupName, nodeName, addr, time.Now().Format("2006-01-02 15:04:05"))
-
-	payload := map[string]string{
-		"text":       text,
-		"username":   "Sentinel Manager",
-		"icon_emoji": ":satellite:",
-	}
-	if channel != "" {
-		if !strings.HasPrefix(channel, "#") {
-			channel = "#" + channel
-		}
-		payload["channel"] = channel
-	}
-
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return false
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(body))
-	if err != nil {
-		return false
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		slog.Error("sentinel up slack failed", "error", err)
-		return false
-	}
-	defer resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
+	return postSlackWebhook(ctx, webhookURL, text, channel)
 }

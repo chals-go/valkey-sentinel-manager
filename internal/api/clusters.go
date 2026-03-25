@@ -52,6 +52,11 @@ func CreateClusterHandler(s store.Store) http.HandlerFunc {
 			return
 		}
 
+		if req.MasterName == "" || req.GroupName == "" || len(req.SentinelAddrs) == 0 {
+			writeError(w, http.StatusBadRequest, "master_name, group_name, and sentinel_addrs are required")
+			return
+		}
+
 		_, err := s.GetCluster(r.Context(), req.MasterName)
 		if err == nil {
 			writeError(w, http.StatusConflict, "cluster already registered: "+req.MasterName)

@@ -3,13 +3,16 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/chals-go/valkey-sentinel-manager/internal/core"
@@ -23,6 +26,7 @@ type AdminHandler struct {
 	store        store.Store
 	session      *SessionManager
 	tmpl         *template.Template
+	langMu       sync.RWMutex
 	lang         string
 	dnsProviders map[string]dns.Provider
 	encryptor    *Encryptor
@@ -32,6 +36,20 @@ type AdminHandler struct {
 // NewAdminHandler는 AdminHandler를 생성하여 반환한다.
 func NewAdminHandler(s store.Store, sm *SessionManager, tmpl *template.Template, lang string, providers map[string]dns.Provider, enc *Encryptor, hc *core.SentinelHealthChecker) *AdminHandler {
 	return &AdminHandler{store: s, session: sm, tmpl: tmpl, lang: lang, dnsProviders: providers, encryptor: enc, healthCheck: hc}
+}
+
+// getLang은 현재 언어 설정을 안전하게 읽어 반환한다.
+func (h *AdminHandler) getLang() string {
+	h.langMu.RLock()
+	defer h.langMu.RUnlock()
+	return h.lang
+}
+
+// setLang은 언어 설정을 안전하게 변경한다.
+func (h *AdminHandler) setLang(lang string) {
+	h.langMu.Lock()
+	defer h.langMu.Unlock()
+	h.lang = lang
 }
 
 // PageData는 템플릿 렌더링에 공통으로 사용되는 데이터 구조체다.
@@ -44,7 +62,7 @@ type PageData struct {
 }
 
 func (h *AdminHandler) render(w http.ResponseWriter, r *http.Request, name string, data PageData) {
-	t := NewTranslator(h.lang)
+	t := NewTranslator(h.getLang())
 	csrfToken := csrfTokenFromContext(r.Context())
 	funcMap := template.FuncMap{
 		"t": t,
@@ -147,16 +165,26 @@ func (h *AdminHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	ip := r.RemoteAddr
 	if h.session.IsLoginLocked(ip) {
-		t := NewTranslator(h.lang)
+		t := NewTranslator(h.getLang())
 		h.render(w, r, "base", PageData{Page: "login", HideSidebar: true, FlashMessage: t("flash_login_locked"), FlashType: "error"})
 		return
 	}
 
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
 	password := r.FormValue("password")
 
 	hash, storeErr := h.store.GetAdminPasswordHash(context.Background())
-	if storeErr != nil { slog.Warn("store error", "method", "GetAdminPasswordHash", "error", storeErr) }
+	if storeErr != nil {
+		if !errors.Is(storeErr, store.ErrNotFound) {
+			slog.Error("store error", "method", "GetAdminPasswordHash", "error", storeErr)
+			http.Error(w, "503 Service Unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		slog.Warn("store error", "method", "GetAdminPasswordHash", "error", storeErr)
+	}
 	var ok bool
 	if hash == "" {
 		ok = password == defaultPassword
@@ -166,13 +194,17 @@ func (h *AdminHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 
 	if !ok {
 		h.session.RecordLoginFailure(ip)
-		t := NewTranslator(h.lang)
+		t := NewTranslator(h.getLang())
 		h.render(w, r, "base", PageData{Page: "login", HideSidebar: true, FlashMessage: t("flash_login_failed"), FlashType: "error"})
 		return
 	}
 
 	h.session.ClearLoginFailures(ip)
-	sid := h.session.CreateSession()
+	sid, err := h.session.CreateSession()
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 	h.session.SetSessionCookie(w, sid)
 	h.redirect(w, r, "/admin/")
 }
@@ -193,7 +225,7 @@ func (h *AdminHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	// Load language from runtime settings.
 	if rt, err := h.store.GetRuntimeSettings(ctx); err == nil {
 		if l, ok := rt["language"]; ok && l != "" {
-			h.lang = l
+			h.setLang(l)
 		}
 	}
 
@@ -505,7 +537,10 @@ func (h *AdminHandler) ClusterEditPage(w http.ResponseWriter, r *http.Request) {
 // ClusterCreate는 새 Replication Group 등록 요청을 처리하고, Sentinel 모니터링과 DNS 레코드를 생성한다.
 func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
 
 	sentinelCluster := strings.TrimSpace(r.FormValue("sentinel_cluster"))
 	monitoringName := strings.TrimSpace(r.FormValue("monitoring_name"))
@@ -531,7 +566,7 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 
 	// Check duplicate.
 	if _, err := h.store.GetCluster(ctx, monitoringName); err == nil {
-		t := NewTranslator(h.lang)
+		t := NewTranslator(h.getLang())
 		h.render(w, r, "base", PageData{
 			Page: "clusters", FlashMessage: t("flash_duplicate_cluster") + ": " + monitoringName, FlashType: "error",
 			Data: h.clustersPageData(ctx),
@@ -614,7 +649,10 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 // LoadSentinelsQuery는 선택한 센티널 클러스터에서 모니터링 중인 마스터 목록을 JSON으로 반환한다.
 func (h *AdminHandler) LoadSentinelsQuery(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
 	clusterName := strings.TrimSpace(r.FormValue("sentinel_cluster"))
 	if clusterName == "" {
 		w.Header().Set("Content-Type", "application/json")
@@ -677,7 +715,10 @@ func (h *AdminHandler) LoadSentinelsQuery(w http.ResponseWriter, r *http.Request
 // LoadSentinelsSubmit은 선택된 마스터들을 DNS disabled 상태로 일괄 등록한다.
 func (h *AdminHandler) LoadSentinelsSubmit(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
 	clusterName := strings.TrimSpace(r.FormValue("sentinel_cluster"))
 	selectedMasters := r.Form["masters"]
 
@@ -737,7 +778,10 @@ func (h *AdminHandler) LoadSentinelsSubmit(w http.ResponseWriter, r *http.Reques
 func (h *AdminHandler) ClusterEditSubmit(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	masterName := r.PathValue("masterName")
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
 
 	cluster, err := h.store.GetCluster(ctx, masterName)
 	if err != nil {
@@ -1011,7 +1055,10 @@ func (h *AdminHandler) Sentinels(w http.ResponseWriter, r *http.Request) {
 // SentinelClusterCreate는 새 Sentinel Cluster와 노드 목록을 등록하는 요청을 처리한다.
 func (h *AdminHandler) SentinelClusterCreate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
 
 	clusterName := strings.TrimSpace(r.FormValue("cluster_name"))
 	sentinelIDs := r.Form["sentinel_ids"]
@@ -1054,7 +1101,10 @@ func (h *AdminHandler) SentinelClusterDelete(w http.ResponseWriter, r *http.Requ
 func (h *AdminHandler) SentinelAddNode(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	grpName := r.PathValue("grpName")
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
 
 	nodeName := strings.TrimSpace(r.FormValue("sentinel_node_name"))
 	host := strings.TrimSpace(r.FormValue("host"))
@@ -1081,7 +1131,10 @@ func (h *AdminHandler) SentinelDeleteNode(w http.ResponseWriter, r *http.Request
 func (h *AdminHandler) SentinelClusterEditSubmit(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	grpName := r.PathValue("grpName")
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
 
 	oldNames := r.Form["old_names"]
 	nodeNames := r.Form["node_names"]
@@ -1127,7 +1180,10 @@ func (h *AdminHandler) SentinelClusterEditSubmit(w http.ResponseWriter, r *http.
 func (h *AdminHandler) SentinelToggleAlert(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	grpName := r.PathValue("grpName")
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
 
 	enabled := r.FormValue("enabled") == "true"
 	rt, storeErr := h.store.GetRuntimeSettings(ctx)
@@ -1255,7 +1311,10 @@ func (h *AdminHandler) SettingsServer(w http.ResponseWriter, r *http.Request) {
 // SettingsServerSave는 서버 런타임 설정 저장 요청을 처리하고 언어 설정을 즉시 반영한다.
 func (h *AdminHandler) SettingsServerSave(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
 
 	settings := map[string]string{
 		"event_dedup_window_seconds": r.FormValue("event_dedup_window_seconds"),
@@ -1271,7 +1330,7 @@ func (h *AdminHandler) SettingsServerSave(w http.ResponseWriter, r *http.Request
 	h.store.SaveRuntimeSettings(ctx, settings)
 
 	if lang := settings["language"]; lang != "" {
-		h.lang = lang
+		h.setLang(lang)
 	}
 
 	h.redirect(w, r, "/admin/settings/server")
@@ -1299,8 +1358,11 @@ func (h *AdminHandler) SettingsDNS(w http.ResponseWriter, r *http.Request) {
 // DNSProviderCreate는 새 DNS 프로바이더 등록 요청을 처리하고 민감한 필드를 암호화하여 저장한다.
 func (h *AdminHandler) DNSProviderCreate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	r.ParseForm()
-	t := NewTranslator(h.lang)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
+	t := NewTranslator(h.getLang())
 
 	providerName := strings.TrimSpace(r.FormValue("provider_name"))
 	providerType := strings.TrimSpace(r.FormValue("provider_type"))
@@ -1385,7 +1447,10 @@ func (h *AdminHandler) DNSProviderEditPage(w http.ResponseWriter, r *http.Reques
 func (h *AdminHandler) DNSProviderEditSubmit(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	providerName := r.PathValue("providerName")
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
 
 	providerType := strings.TrimSpace(r.FormValue("provider_type"))
 	cfg := map[string]string{"type": providerType}
@@ -1482,8 +1547,11 @@ func (h *AdminHandler) SettingsToken(w http.ResponseWriter, r *http.Request) {
 // RegenerateToken은 새 API 토큰을 생성하거나 기존 토큰을 재생성하는 요청을 처리한다.
 func (h *AdminHandler) RegenerateToken(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	r.ParseForm()
-	t := NewTranslator(h.lang)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
+	t := NewTranslator(h.getLang())
 
 	tokenName := strings.TrimSpace(r.FormValue("token_name"))
 	if tokenName == "" {
@@ -1491,7 +1559,12 @@ func (h *AdminHandler) RegenerateToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokens := h.getAPITokens(ctx)
-	tokens[tokenName] = GenerateAPIToken()
+	token, err := GenerateAPIToken()
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	tokens[tokenName] = token
 	h.saveAPITokens(ctx, tokens)
 
 	h.render(w, r, "base", PageData{
@@ -1503,8 +1576,11 @@ func (h *AdminHandler) RegenerateToken(w http.ResponseWriter, r *http.Request) {
 // DeleteToken은 특정 API 토큰을 삭제하는 요청을 처리한다.
 func (h *AdminHandler) DeleteToken(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	r.ParseForm()
-	t := NewTranslator(h.lang)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
+	t := NewTranslator(h.getLang())
 
 	tokenName := strings.TrimSpace(r.FormValue("token_name"))
 	tokens := h.getAPITokens(ctx)
@@ -1534,8 +1610,11 @@ func (h *AdminHandler) SettingsSlack(w http.ResponseWriter, r *http.Request) {
 // SlackWebhookSave는 Slack Webhook URL 및 채널 설정 저장 요청을 처리한다.
 func (h *AdminHandler) SlackWebhookSave(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	r.ParseForm()
-	t := NewTranslator(h.lang)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
+	t := NewTranslator(h.getLang())
 
 	webhookURL := strings.TrimSpace(r.FormValue("slack_webhook_url"))
 	channel := strings.TrimSpace(r.FormValue("slack_channel"))
@@ -1544,6 +1623,14 @@ func (h *AdminHandler) SlackWebhookSave(w http.ResponseWriter, r *http.Request) 
 		h.render(w, r, "base", PageData{
 			Page: "settings-slack", FlashMessage: t("flash_webhook_required"), FlashType: "error",
 			Data: map[string]any{"WebhookURL": "", "Channel": channel},
+		})
+		return
+	}
+
+	if u, err := url.Parse(webhookURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		h.render(w, r, "base", PageData{
+			Page: "settings-slack", FlashMessage: t("flash_webhook_invalid_url"), FlashType: "error",
+			Data: map[string]any{"WebhookURL": webhookURL, "Channel": channel},
 		})
 		return
 	}
@@ -1561,7 +1648,7 @@ func (h *AdminHandler) SlackWebhookSave(w http.ResponseWriter, r *http.Request) 
 
 // SlackWebhookDelete는 저장된 Slack Webhook URL을 삭제하여 알림을 비활성화한다.
 func (h *AdminHandler) SlackWebhookDelete(w http.ResponseWriter, r *http.Request) {
-	t := NewTranslator(h.lang)
+	t := NewTranslator(h.getLang())
 	h.store.DeleteSlackWebhookURL(r.Context())
 	h.render(w, r, "base", PageData{
 		Page: "settings-slack", FlashMessage: t("flash_slack_disabled"), FlashType: "success",
@@ -1572,7 +1659,7 @@ func (h *AdminHandler) SlackWebhookDelete(w http.ResponseWriter, r *http.Request
 // SlackWebhookTest는 테스트 페일오버 이벤트를 사용하여 Slack 알림 전송을 테스트한다.
 func (h *AdminHandler) SlackWebhookTest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	t := NewTranslator(h.lang)
+	t := NewTranslator(h.getLang())
 
 	webhookURL, storeErr := h.store.GetSlackWebhookURL(ctx)
 	if storeErr != nil { slog.Warn("store error", "method", "GetSlackWebhookURL", "error", storeErr) }
@@ -1627,8 +1714,11 @@ func (h *AdminHandler) SettingsAccount(w http.ResponseWriter, r *http.Request) {
 
 // SettingsAccountSubmit은 관리자 비밀번호 변경 요청을 처리한다. 현재 비밀번호 검증 후 새 비밀번호를 저장한다.
 func (h *AdminHandler) SettingsAccountSubmit(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	t := NewTranslator(h.lang)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
+	t := NewTranslator(h.getLang())
 	currentPw := r.FormValue("current_password")
 	newPw := r.FormValue("new_password")
 	confirmPw := r.FormValue("confirm_password")
@@ -1655,7 +1745,12 @@ func (h *AdminHandler) SettingsAccountSubmit(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	h.store.SetAdminPasswordHash(r.Context(), HashPassword(newPw))
+	hash, err := HashPassword(newPw)
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	h.store.SetAdminPasswordHash(r.Context(), hash)
 	h.render(w, r, "base", PageData{Page: "settings-account", FlashMessage: t("flash_pw_changed"), FlashType: "success"})
 }
 

@@ -47,7 +47,10 @@ func (sm *SessionManager) CSRFProtect(next http.Handler) http.Handler {
 
 		// POST 요청은 CSRF 토큰을 검증한다.
 		if r.Method == http.MethodPost {
-			r.ParseForm()
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "invalid form data", http.StatusBadRequest)
+				return
+			}
 			formToken := r.FormValue("csrf_token")
 			if formToken == "" || formToken != token {
 				http.Error(w, "403 Forbidden - CSRF token invalid", http.StatusForbidden)

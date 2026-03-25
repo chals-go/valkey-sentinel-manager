@@ -327,7 +327,7 @@
 {{ $detail := index $.Data.LiveInfo $c.MasterName }}
 
 <!-- Edit modal -->
-<div id="modal-edit-{{ $c.MasterName }}" class="modal-overlay">
+<div id="modal-edit-{{ $c.MasterName }}" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="bg-white rounded-2xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ t "edit_replication_group" }}</h2>
@@ -435,7 +435,7 @@
 </div>
 
 <!-- Failover modal -->
-<div id="modal-failover-{{ $c.MasterName }}" class="modal-overlay">
+<div id="modal-failover-{{ $c.MasterName }}" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-slate-900">{{ t "run_failover" }}</h2>
@@ -453,7 +453,7 @@
 </div>
 
 <!-- Delete modal -->
-<div id="modal-delete-{{ $c.MasterName }}" class="modal-overlay">
+<div id="modal-delete-{{ $c.MasterName }}" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-red-600">{{ t "delete_replication_group" }}</h2>
@@ -471,7 +471,7 @@
 </div>
 
 <!-- Sync DNS modal -->
-<div id="modal-sync-dns-{{ $c.MasterName }}" class="modal-overlay">
+<div id="modal-sync-dns-{{ $c.MasterName }}" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-slate-900">{{ t "sync_dns" }}</h2>
@@ -489,7 +489,7 @@
 </div>
 
 <!-- Pause modal -->
-<div id="modal-pause-{{ $c.MasterName }}" class="modal-overlay">
+<div id="modal-pause-{{ $c.MasterName }}" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-slate-900">{{ t "pause_monitoring" }}</h2>
@@ -507,7 +507,7 @@
 </div>
 
 <!-- Resume modal -->
-<div id="modal-resume-{{ $c.MasterName }}" class="modal-overlay">
+<div id="modal-resume-{{ $c.MasterName }}" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-emerald-600">{{ t "resume_monitoring" }}</h2>
@@ -536,7 +536,7 @@
 {{ end }}
 
 <!-- Register Replication Group Modal -->
-<div id="modal-cluster-new" class="modal-overlay">
+<div id="modal-cluster-new" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ t "register_replication_group" }}</h2>
@@ -656,7 +656,7 @@ if (sentClusterSel) sentClusterSel.addEventListener('change', checkDuplicateMoni
 </script>
 
 <!-- Load Sentinels Modal -->
-<div id="modal-load-sentinels" class="modal-overlay">
+<div id="modal-load-sentinels" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <div>
@@ -699,6 +699,12 @@ if (sentClusterSel) sentClusterSel.addEventListener('change', checkDuplicateMoni
 
   if (!clusterSel) return;
 
+  function escapeHtml(t) {
+    var d = document.createElement('div');
+    d.textContent = t;
+    return d.innerHTML;
+  }
+
   function queryMasters() {
     var cluster = clusterSel.value;
     if (!cluster) return;
@@ -716,7 +722,7 @@ if (sentClusterSel) sentClusterSel.addEventListener('change', checkDuplicateMoni
     })
     .then(function(data) {
       if (data.error) {
-        resultsDiv.innerHTML = '<div class="text-center py-8 text-sm text-red-500">' + data.error + '</div>';
+        resultsDiv.innerHTML = '<div class="text-center py-8 text-sm text-red-500">' + escapeHtml(data.error) + '</div>';
         return;
       }
       var masters = data.masters || [];
@@ -736,13 +742,13 @@ if (sentClusterSel) sentClusterSel.addEventListener('change', checkDuplicateMoni
         var dis = m.registered ? ' disabled' : '';
         var rowCls = m.registered ? ' class="opacity-50"' : ' class="hover:bg-gray-50/50"';
         html += '<tr' + rowCls + '>' +
-          '<td class="px-4 py-3 border-b border-gray-50"><input type="checkbox" name="masters" value="' + m.name + '"' + dis + ' class="load-master-check w-4 h-4 accent-indigo-600 rounded"></td>' +
-          '<td class="px-4 py-3 border-b border-gray-50 font-mono text-sm text-slate-900">' + m.name + (m.registered ? ' <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200 ml-2">{{ t "registered" }}</span>' : '') + '</td>' +
-          '<td class="px-4 py-3 border-b border-gray-50 font-mono text-sm text-slate-600">' + m.ip + ':' + m.port + '</td>' +
+          '<td class="px-4 py-3 border-b border-gray-50"><input type="checkbox" name="masters" value="' + escapeHtml(m.name) + '"' + dis + ' class="load-master-check w-4 h-4 accent-indigo-600 rounded"></td>' +
+          '<td class="px-4 py-3 border-b border-gray-50 font-mono text-sm text-slate-900">' + escapeHtml(m.name) + (m.registered ? ' <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200 ml-2">{{ t "registered" }}</span>' : '') + '</td>' +
+          '<td class="px-4 py-3 border-b border-gray-50 font-mono text-sm text-slate-600">' + escapeHtml(m.ip) + ':' + m.port + '</td>' +
           '<td class="px-4 py-3 border-b border-gray-50 text-sm text-slate-600">' + m.quorum + '</td>' +
           '<td class="px-4 py-3 border-b border-gray-50">' +
             (m.status === 'ok' ? '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>ok</span>' :
-            '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>' + m.status + '</span>') +
+            '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>' + escapeHtml(m.status) + '</span>') +
           '</td></tr>';
       }
       html += '</tbody></table>';
@@ -765,7 +771,7 @@ if (sentClusterSel) sentClusterSel.addEventListener('change', checkDuplicateMoni
       });
     })
     .catch(function(err) {
-      resultsDiv.innerHTML = '<div class="text-center py-8 text-sm text-red-500">Query failed: ' + err.message + '</div>';
+      resultsDiv.innerHTML = '<div class="text-center py-8 text-sm text-red-500">Query failed: ' + escapeHtml(err.message) + '</div>';
     });
   }
 
