@@ -129,6 +129,24 @@ document.addEventListener('change', function(e) {
     }
     return;
   }
+  // Add Replica DNS toggle
+  var addReplica = e.target.closest('[data-toggle-add-replica]');
+  if (addReplica) {
+    var preview = addReplica.closest('form') || addReplica.closest('.modal-overlay');
+    var pv = preview ? preview.querySelector('[data-replica-preview]') : null;
+    if (pv) pv.classList.toggle('hidden', !addReplica.checked);
+    return;
+  }
+  // Disable DNS toggle
+  var disDns = e.target.closest('[data-toggle-disable-dns]');
+  if (disDns) {
+    var frm = disDns.closest('form');
+    if (!frm) return;
+    var els = frm.querySelectorAll('[name="dns_provider"], [name="dns_ttl"], [name="primary_record"], [name="replica_domain"], [name="replica_ttl"], [name="add_replica_dns"]');
+    for (var i = 0; i < els.length; i++) { els[i].disabled = disDns.checked; }
+    frm.querySelectorAll('[data-replica-preview]').forEach(function(el) { if (disDns.checked) el.classList.add('hidden'); });
+    return;
+  }
 });
 
 // Input delegation: DNS preview

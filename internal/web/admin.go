@@ -800,10 +800,47 @@ func (h *AdminHandler) ClusterEditSubmit(w http.ResponseWriter, r *http.Request)
 			}
 		}
 	} else if cluster.DNSProvider != "" {
-		// 기존 DNS 활성화 클러스터: TTL만 업데이트
-		cluster.PrimaryDNS.TTL = dnsTTL
-		if cluster.ReplicaDNS != nil {
-			cluster.ReplicaDNS.TTL = dnsTTL
+		disableDNS := r.FormValue("disable_dns") == "on"
+		addReplicaDNS := r.FormValue("add_replica_dns") == "on"
+
+		if disableDNS {
+			// DNS 비활성화: 레코드 삭제 후 모델 초기화
+			if provider := h.dnsProviders[cluster.DNSProvider]; provider != nil {
+				provider.DeleteRecord(ctx, cluster.PrimaryDNS.Zone, cluster.PrimaryDNS.RecordName, cluster.PrimaryDNS.RecordType)
+				if cluster.ReplicaDNS != nil {
+					provider.DeleteRecord(ctx, cluster.ReplicaDNS.Zone, cluster.ReplicaDNS.RecordName, cluster.ReplicaDNS.RecordType)
+				}
+			}
+			cluster.DNSProvider = ""
+			cluster.PrimaryDNS = models.DNSMapping{}
+			cluster.ReplicaDNS = nil
+		} else {
+			// TTL 업데이트
+			cluster.PrimaryDNS.TTL = dnsTTL
+			if cluster.ReplicaDNS != nil {
+				cluster.ReplicaDNS.TTL = dnsTTL
+			}
+			// Replica DNS 추가 (없는 경우만)
+			if addReplicaDNS && cluster.ReplicaDNS == nil {
+				rRec := strings.Replace(cluster.PrimaryDNS.RecordName, "primary", "replica", 1)
+				replicaDNS := &models.DNSMapping{Zone: cluster.PrimaryDNS.Zone, RecordName: rRec, RecordType: "A", TTL: dnsTTL}
+				cluster.ReplicaDNS = replicaDNS
+
+				detail := core.GetMasterDetail(ctx, cluster.SentinelAddrs, cluster.MasterName, cluster.SentinelPassword)
+				provider := h.dnsProviders[cluster.DNSProvider]
+				if detail != nil && provider != nil && len(detail.Slaves) > 0 {
+					cluster.MultiReplica = len(detail.Slaves) > 1
+					if len(detail.Slaves) == 1 {
+						provider.UpdateRecord(ctx, replicaDNS.Zone, rRec, "A", detail.Slaves[0].IP, replicaDNS.TTL)
+					} else {
+						var ips []string
+						for _, s := range detail.Slaves {
+							ips = append(ips, s.IP)
+						}
+						provider.UpdateRecordValues(ctx, replicaDNS.Zone, rRec, "A", ips, replicaDNS.TTL)
+					}
+				}
+			}
 		}
 	}
 	h.store.RegisterCluster(ctx, cluster)

@@ -356,6 +356,24 @@
           <p class="text-xs text-slate-400 mt-1">{{ t "dns_ttl_desc" }}</p>
         </div>
       </div>
+      {{ if not $c.ReplicaDNS }}
+      <div class="mb-4">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" name="add_replica_dns" data-toggle-add-replica class="w-4 h-4 accent-indigo-600 rounded">
+          <span class="text-sm font-medium text-slate-700">{{ t "add_replica_dns" }}</span>
+        </label>
+        <div data-replica-preview class="hidden mt-2 bg-gray-50 rounded-lg p-3 border border-gray-200">
+          <div class="font-mono text-sm text-slate-600">Replica: <strong>{{ replace $c.PrimaryDNS.RecordName "primary" "replica" }}.{{ $c.PrimaryDNS.Zone }}</strong></div>
+        </div>
+      </div>
+      {{ end }}
+      <div class="mb-5">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" name="disable_dns" data-toggle-disable-dns class="w-4 h-4 accent-red-600 rounded">
+          <span class="text-sm font-medium text-red-600">{{ t "disable_dns" }}</span>
+        </label>
+        <p class="text-xs text-red-400 mt-1 ml-6">⚠ {{ t "disable_dns_warning" }}</p>
+      </div>
       {{ else }}
       <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">DNS</div>
       <div class="mb-4">

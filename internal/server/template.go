@@ -46,6 +46,7 @@ func TemplateFuncMap(t func(string) string) template.FuncMap {
 			return value
 		},
 		"contains": strings.Contains,
+		"replace": func(s, old, new string) string { return strings.Replace(s, old, new, 1) },
 		"sliceContains": func(slice []string, val string) bool {
 			for _, s := range slice {
 				if s == val {
