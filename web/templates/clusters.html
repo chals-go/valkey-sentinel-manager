@@ -636,15 +636,12 @@ if (sentClusterSel) sentClusterSel.addEventListener('change', checkDuplicateMoni
     </div>
     <form id="load-sentinels-form" method="post" action="/admin/clusters/load-sentinels">
       <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-      <div class="flex items-end gap-3 mb-6">
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "sentinel_cluster" }}</label>
-          <select id="load-sentinel-cluster" name="sentinel_cluster" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
-            <option value="">{{ t "select" }}</option>
-            {{ range .Data.SentinelClusterNames }}<option value="{{ . }}">{{ . }}</option>{{ end }}
-          </select>
-        </div>
-        <button type="button" id="load-sentinel-query-btn" class="px-4 py-2 bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">{{ t "query_masters" }}</button>
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "sentinel_cluster" }}</label>
+        <select id="load-sentinel-cluster" name="sentinel_cluster" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+          <option value="">{{ t "select" }}</option>
+          {{ range .Data.SentinelClusterNames }}<option value="{{ . }}">{{ . }}</option>{{ end }}
+        </select>
       </div>
       <div class="mb-4 px-4 py-3 rounded-xl text-xs bg-amber-50 text-amber-700 border border-amber-200 flex items-start gap-2">
         <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -663,16 +660,15 @@ if (sentClusterSel) sentClusterSel.addEventListener('change', checkDuplicateMoni
 
 <script>
 (function() {
-  var queryBtn = document.getElementById('load-sentinel-query-btn');
   var clusterSel = document.getElementById('load-sentinel-cluster');
   var resultsDiv = document.getElementById('load-sentinel-results');
   var actionsDiv = document.getElementById('load-sentinel-actions');
   var submitBtn = document.getElementById('load-sentinel-submit');
   var csrfVal = document.querySelector('#load-sentinels-form [name="csrf_token"]').value;
 
-  if (!queryBtn) return;
+  if (!clusterSel) return;
 
-  queryBtn.addEventListener('click', function() {
+  function queryMasters() {
     var cluster = clusterSel.value;
     if (!cluster) return;
     resultsDiv.innerHTML = '<div class="text-center py-8"><div class="inline-block w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>';
@@ -737,10 +733,10 @@ if (sentClusterSel) sentClusterSel.addEventListener('change', checkDuplicateMoni
         if (ev.target.classList.contains('load-master-check')) updateSubmitBtn();
       });
     })
-    .catch(function() {
-      resultsDiv.innerHTML = '<div class="text-center py-8 text-sm text-red-500">Query failed</div>';
+    .catch(function(err) {
+      resultsDiv.innerHTML = '<div class="text-center py-8 text-sm text-red-500">Query failed: ' + err.message + '</div>';
     });
-  });
+  }
 
   function updateSubmitBtn() {
     var checked = resultsDiv.querySelectorAll('.load-master-check:checked:not(:disabled)');
@@ -748,6 +744,14 @@ if (sentClusterSel) sentClusterSel.addEventListener('change', checkDuplicateMoni
     submitBtn.disabled = count === 0;
     submitBtn.textContent = '{{ t "register_selected" }}' + (count > 0 ? ' (' + count + ')' : '');
   }
+
+  clusterSel.addEventListener('change', function() {
+    if (clusterSel.value) { queryMasters(); }
+    else {
+      resultsDiv.innerHTML = '<div class="text-center py-8 text-sm text-slate-400">{{ t "load_sentinels_desc" }}</div>';
+      actionsDiv.classList.add('hidden');
+    }
+  });
 })();
 </script>
 {{ end }}
