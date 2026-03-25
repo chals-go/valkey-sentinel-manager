@@ -242,7 +242,10 @@ install_manager() {
     if [ ! -f "$CONFIG_DIR/config.yaml" ]; then
         if [ -f "$SCRIPT_DIR/config.yaml.example" ]; then
             cp "$SCRIPT_DIR/config.yaml.example" "$CONFIG_DIR/config.yaml"
-            info "Created: $CONFIG_DIR/config.yaml"
+            # Generate encryption_key (32 bytes, base64)
+            ENC_KEY=$(openssl rand -base64 32 2>/dev/null || head -c 32 /dev/urandom | base64)
+            sed -i "s|^encryption_key:.*|encryption_key: \"$ENC_KEY\"|" "$CONFIG_DIR/config.yaml"
+            info "Created: $CONFIG_DIR/config.yaml (encryption_key auto-generated)"
         else
             warn "config.yaml.example not found, skipping config copy"
         fi
