@@ -88,6 +88,8 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /admin/clusters", protect(http.HandlerFunc(h.Clusters)))
 	mux.Handle("GET /admin/clusters/new", protect(http.HandlerFunc(h.ClusterFormPage)))
 	mux.Handle("POST /admin/clusters/new", protect(http.HandlerFunc(h.ClusterCreate)))
+	mux.Handle("POST /admin/clusters/load-sentinels/query", protect(http.HandlerFunc(h.LoadSentinelsQuery)))
+	mux.Handle("POST /admin/clusters/load-sentinels", protect(http.HandlerFunc(h.LoadSentinelsSubmit)))
 	mux.Handle("GET /admin/clusters/{masterName}/edit", protect(http.HandlerFunc(h.ClusterEditPage)))
 	mux.Handle("POST /admin/clusters/{masterName}/edit", protect(http.HandlerFunc(h.ClusterEditSubmit)))
 	mux.Handle("POST /admin/clusters/{masterName}/delete", protect(http.HandlerFunc(h.ClusterDelete)))
@@ -606,6 +608,108 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	h.redirect(w, r, "/admin/clusters")
+}
+
+// LoadSentinelsQuery는 선택한 센티널 클러스터에서 모니터링 중인 마스터 목록을 JSON으로 반환한다.
+func (h *AdminHandler) LoadSentinelsQuery(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	r.ParseForm()
+	clusterName := strings.TrimSpace(r.FormValue("sentinel_cluster"))
+	if clusterName == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"masters":[]}`))
+		return
+	}
+
+	sents, _ := h.store.ListSentinels(ctx, clusterName)
+	var addrs []string
+	var sentinelPassword string
+	for _, s := range sents {
+		addrs = append(addrs, fmt.Sprintf("%s:%d", s.Host, s.Port))
+	}
+
+	masters := core.ListSentinelMasters(ctx, addrs, sentinelPassword)
+
+	// 이미 등록된 클러스터 목록
+	existingClusters, _ := h.store.ListClusters(ctx)
+	registered := make(map[string]bool)
+	for _, c := range existingClusters {
+		registered[c.MasterName] = true
+	}
+
+	type masterResult struct {
+		Name       string `json:"name"`
+		IP         string `json:"ip"`
+		Port       int    `json:"port"`
+		Quorum     int    `json:"quorum"`
+		Status     string `json:"status"`
+		Registered bool   `json:"registered"`
+	}
+	var results []masterResult
+	for _, m := range masters {
+		results = append(results, masterResult{
+			Name:       m.Name,
+			IP:         m.IP,
+			Port:       m.Port,
+			Quorum:     m.Quorum,
+			Status:     m.Status,
+			Registered: registered[m.Name],
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"masters": results})
+}
+
+// LoadSentinelsSubmit은 선택된 마스터들을 DNS disabled 상태로 일괄 등록한다.
+func (h *AdminHandler) LoadSentinelsSubmit(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	r.ParseForm()
+	clusterName := strings.TrimSpace(r.FormValue("sentinel_cluster"))
+	selectedMasters := r.Form["masters"]
+
+	if clusterName == "" || len(selectedMasters) == 0 {
+		h.redirect(w, r, "/admin/clusters")
+		return
+	}
+
+	sents, _ := h.store.ListSentinels(ctx, clusterName)
+	var addrs []string
+	for _, s := range sents {
+		addrs = append(addrs, fmt.Sprintf("%s:%d", s.Host, s.Port))
+	}
+
+	// 센티널에서 마스터 상세 정보 조회
+	allMasters := core.ListSentinelMasters(ctx, addrs, "")
+	masterMap := make(map[string]core.SentinelMasterInfo)
+	for _, m := range allMasters {
+		masterMap[m.Name] = m
+	}
+
+	count := 0
+	for _, name := range selectedMasters {
+		// 이미 등록된 경우 스킵
+		if _, err := h.store.GetCluster(ctx, name); err == nil {
+			continue
+		}
+		info, ok := masterMap[name]
+		if !ok {
+			continue
+		}
+		cluster := &models.Cluster{
+			GroupName:       clusterName,
+			MasterName:      name,
+			SentinelAddrs:   addrs,
+			PrimaryIP:       info.IP,
+			PrimaryPort:     info.Port,
+			QuorumMode:      true,
+			QuorumThreshold: info.Quorum,
+		}
+		h.store.RegisterCluster(ctx, cluster)
+		count++
+	}
+
+	slog.Info("load sentinels completed", "cluster", clusterName, "registered", count)
 	h.redirect(w, r, "/admin/clusters")
 }
 

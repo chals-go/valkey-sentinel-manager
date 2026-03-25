@@ -10,6 +10,7 @@
       <span class="check-icon hidden text-emerald-600">{{ template "icon-check" }}</span>
       {{ t "copy_all" }}
     </button>
+    <button class="inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors" data-modal-open="modal-load-sentinels">{{ t "load_sentinels" }}</button>
     <button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" data-modal-open="modal-cluster-new">+ {{ t "register_replication_group" }}</button>
   </div>
 </div>
@@ -621,5 +622,121 @@ function checkDuplicateMonitoring() {
 if (mni) mni.addEventListener('input', checkDuplicateMonitoring);
 var sentClusterSel = document.querySelector('#modal-cluster-new [name="sentinel_cluster"]');
 if (sentClusterSel) sentClusterSel.addEventListener('change', checkDuplicateMonitoring);
+</script>
+
+<!-- Load Sentinels Modal -->
+<div id="modal-load-sentinels" class="modal-overlay">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900">{{ t "load_sentinels" }}</h2>
+        <p class="text-sm text-slate-400 mt-0.5">{{ t "load_sentinels_desc" }}</p>
+      </div>
+      <button data-modal-close="modal-load-sentinels" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+    </div>
+    <form id="load-sentinels-form" method="post" action="/admin/clusters/load-sentinels">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+      <div class="flex items-end gap-3 mb-6">
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "sentinel_cluster" }}</label>
+          <select id="load-sentinel-cluster" name="sentinel_cluster" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+            <option value="">{{ t "select" }}</option>
+            {{ range .Data.SentinelClusterNames }}<option value="{{ . }}">{{ . }}</option>{{ end }}
+          </select>
+        </div>
+        <button type="button" id="load-sentinel-query-btn" class="px-4 py-2 bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">{{ t "query_masters" }}</button>
+      </div>
+      <div id="load-sentinel-results">
+        <div class="text-center py-8 text-sm text-slate-400">{{ t "load_sentinels_desc" }}</div>
+      </div>
+      <div id="load-sentinel-actions" class="hidden flex justify-end gap-3 pt-4 border-t border-gray-100 mt-4">
+        <button type="button" data-modal-close="modal-load-sentinels" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+        <button type="submit" id="load-sentinel-submit" disabled class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">{{ t "register_selected" }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function() {
+  var queryBtn = document.getElementById('load-sentinel-query-btn');
+  var clusterSel = document.getElementById('load-sentinel-cluster');
+  var resultsDiv = document.getElementById('load-sentinel-results');
+  var actionsDiv = document.getElementById('load-sentinel-actions');
+  var submitBtn = document.getElementById('load-sentinel-submit');
+  var csrfVal = document.querySelector('#load-sentinels-form [name="csrf_token"]').value;
+
+  if (!queryBtn) return;
+
+  queryBtn.addEventListener('click', function() {
+    var cluster = clusterSel.value;
+    if (!cluster) return;
+    resultsDiv.innerHTML = '<div class="text-center py-8"><div class="inline-block w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>';
+    actionsDiv.classList.add('hidden');
+
+    fetch('/admin/clusters/load-sentinels/query', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'sentinel_cluster=' + encodeURIComponent(cluster) + '&csrf_token=' + encodeURIComponent(csrfVal)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var masters = data.masters || [];
+      if (masters.length === 0) {
+        resultsDiv.innerHTML = '<div class="text-center py-8 text-sm text-slate-400">{{ t "no_new_masters" }}</div>';
+        return;
+      }
+      var html = '<table class="w-full"><thead><tr>' +
+        '<th class="bg-gray-50/80 px-4 py-2 text-left text-xs font-semibold uppercase text-slate-400 border-b"><input type="checkbox" id="load-check-all" class="w-4 h-4 accent-indigo-600 rounded"></th>' +
+        '<th class="bg-gray-50/80 px-4 py-2 text-left text-xs font-semibold uppercase text-slate-400 border-b">Master Name</th>' +
+        '<th class="bg-gray-50/80 px-4 py-2 text-left text-xs font-semibold uppercase text-slate-400 border-b">Primary</th>' +
+        '<th class="bg-gray-50/80 px-4 py-2 text-left text-xs font-semibold uppercase text-slate-400 border-b">Quorum</th>' +
+        '<th class="bg-gray-50/80 px-4 py-2 text-left text-xs font-semibold uppercase text-slate-400 border-b">{{ t "status" }}</th>' +
+        '</tr></thead><tbody>';
+      for (var i = 0; i < masters.length; i++) {
+        var m = masters[i];
+        var dis = m.registered ? ' disabled' : '';
+        var rowCls = m.registered ? ' class="opacity-50"' : ' class="hover:bg-gray-50/50"';
+        html += '<tr' + rowCls + '>' +
+          '<td class="px-4 py-3 border-b border-gray-50"><input type="checkbox" name="masters" value="' + m.name + '"' + dis + ' class="load-master-check w-4 h-4 accent-indigo-600 rounded"></td>' +
+          '<td class="px-4 py-3 border-b border-gray-50 font-mono text-sm text-slate-900">' + m.name + (m.registered ? ' <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200 ml-2">{{ t "registered" }}</span>' : '') + '</td>' +
+          '<td class="px-4 py-3 border-b border-gray-50 font-mono text-sm text-slate-600">' + m.ip + ':' + m.port + '</td>' +
+          '<td class="px-4 py-3 border-b border-gray-50 text-sm text-slate-600">' + m.quorum + '</td>' +
+          '<td class="px-4 py-3 border-b border-gray-50">' +
+            (m.status === 'ok' ? '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>ok</span>' :
+            '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>' + m.status + '</span>') +
+          '</td></tr>';
+      }
+      html += '</tbody></table>';
+      resultsDiv.innerHTML = html;
+      actionsDiv.classList.remove('hidden');
+      updateSubmitBtn();
+
+      // Check-all
+      var checkAll = document.getElementById('load-check-all');
+      if (checkAll) {
+        checkAll.addEventListener('change', function() {
+          var boxes = resultsDiv.querySelectorAll('.load-master-check:not(:disabled)');
+          for (var j = 0; j < boxes.length; j++) boxes[j].checked = checkAll.checked;
+          updateSubmitBtn();
+        });
+      }
+      // Individual checkboxes
+      resultsDiv.addEventListener('change', function(ev) {
+        if (ev.target.classList.contains('load-master-check')) updateSubmitBtn();
+      });
+    })
+    .catch(function() {
+      resultsDiv.innerHTML = '<div class="text-center py-8 text-sm text-red-500">Query failed</div>';
+    });
+  });
+
+  function updateSubmitBtn() {
+    var checked = resultsDiv.querySelectorAll('.load-master-check:checked:not(:disabled)');
+    var count = checked.length;
+    submitBtn.disabled = count === 0;
+    submitBtn.textContent = '{{ t "register_selected" }}' + (count > 0 ? ' (' + count + ')' : '');
+  }
+})();
 </script>
 {{ end }}

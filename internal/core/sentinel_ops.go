@@ -170,6 +170,54 @@ func GetMasterDetail(ctx context.Context, sentinelAddrs []string, masterName, se
 	return nil
 }
 
+// SentinelMasterInfo는 SENTINEL MASTERS 응답의 개별 마스터 정보이다.
+type SentinelMasterInfo struct {
+	Name   string `json:"name"`
+	IP     string `json:"ip"`
+	Port   int    `json:"port"`
+	Quorum int    `json:"quorum"`
+	Status string `json:"status"`
+}
+
+// ListSentinelMasters는 센티널에서 모니터링 중인 모든 마스터 목록을 조회한다.
+func ListSentinelMasters(ctx context.Context, sentinelAddrs []string, sentinelPassword string) []SentinelMasterInfo {
+	for _, addr := range sentinelAddrs {
+		client, err := newSentinelClient(addr, sentinelPassword)
+		if err != nil {
+			continue
+		}
+		resp, err := client.Do(ctx, client.B().Arbitrary("SENTINEL", "MASTERS").Build()).ToArray()
+		client.Close()
+		if err != nil {
+			slog.Warn("SENTINEL MASTERS failed", "addr", addr, "error", err)
+			continue
+		}
+		var masters []SentinelMasterInfo
+		for _, m := range resp {
+			info, err := parseSentinelMessage(m)
+			if err != nil {
+				continue
+			}
+			port, _ := strconv.Atoi(info["port"])
+			quorum, _ := strconv.Atoi(info["quorum"])
+			flags := info["flags"]
+			status := "ok"
+			if !strings.Contains(flags, "master") || strings.Contains(flags, "s_down") || strings.Contains(flags, "o_down") {
+				status = flags
+			}
+			masters = append(masters, SentinelMasterInfo{
+				Name:   info["name"],
+				IP:     info["ip"],
+				Port:   port,
+				Quorum: quorum,
+				Status: status,
+			})
+		}
+		return masters
+	}
+	return nil
+}
+
 // parseSentinelResult는 ValkeyResult를 맵(RESP3) 또는 플랫 배열(RESP2)로 파싱한다.
 func parseSentinelResult(resp valkey.ValkeyResult) (map[string]string, error) {
 	if m, err := resp.AsStrMap(); err == nil {
