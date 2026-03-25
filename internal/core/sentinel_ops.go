@@ -133,6 +133,21 @@ func SentinelSetConfig(ctx context.Context, sentinelAddrs []string, masterName, 
 	return results
 }
 
+// SentinelApplyConfig는 센티널 마스터에 down-after-ms, failover-timeout, 스크립트를 일괄 적용한다.
+func SentinelApplyConfig(ctx context.Context, sentinelAddrs []string, masterName, sentinelPassword string, downAfterMs, failoverTimeout int) {
+	for _, addr := range sentinelAddrs {
+		client, err := newSentinelClient(addr, sentinelPassword)
+		if err != nil {
+			continue
+		}
+		client.Do(ctx, client.B().Arbitrary("SENTINEL", "SET", masterName, "down-after-milliseconds", strconv.Itoa(downAfterMs)).Build())
+		client.Do(ctx, client.B().Arbitrary("SENTINEL", "SET", masterName, "failover-timeout", strconv.Itoa(failoverTimeout)).Build())
+		client.Do(ctx, client.B().Arbitrary("SENTINEL", "SET", masterName, "client-reconfig-script", "/usr/local/bin/sentinel-agent-reconfig").Build())
+		client.Do(ctx, client.B().Arbitrary("SENTINEL", "SET", masterName, "notification-script", "/usr/local/bin/sentinel-agent-notify").Build())
+		client.Close()
+	}
+}
+
 // SentinelRemove는 주어진 모든 센티널 인스턴스에서 마스터 등록을 해제한다.
 func SentinelRemove(ctx context.Context, sentinelAddrs []string, masterName, sentinelPassword string) map[string]bool {
 	results := make(map[string]bool, len(sentinelAddrs))

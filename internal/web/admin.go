@@ -686,6 +686,11 @@ func (h *AdminHandler) LoadSentinelsSubmit(w http.ResponseWriter, r *http.Reques
 		masterMap[m.Name] = m
 	}
 
+	// Runtime 설정에서 down-after-ms, failover-timeout 조회
+	rt, _ := h.store.GetRuntimeSettings(ctx)
+	downMs := intFromMap(rt, "sentinel_down_after_ms", 5000)
+	failTimeout := intFromMap(rt, "sentinel_failover_timeout", 30000)
+
 	count := 0
 	for _, name := range selectedMasters {
 		// 이미 등록된 경우 스킵
@@ -706,6 +711,8 @@ func (h *AdminHandler) LoadSentinelsSubmit(w http.ResponseWriter, r *http.Reques
 			QuorumThreshold: info.Quorum,
 		}
 		h.store.RegisterCluster(ctx, cluster)
+		// 센티널 설정 적용 (down-after-ms, failover-timeout, scripts)
+		core.SentinelApplyConfig(ctx, addrs, name, "", downMs, failTimeout)
 		count++
 	}
 
