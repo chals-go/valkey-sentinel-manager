@@ -1,3 +1,4 @@
+// Package core는 센티널 이벤트 처리, 페일오버 관리, 헬스체크 등 핵심 비즈니스 로직을 제공한다.
 package core
 
 import (
@@ -11,128 +12,271 @@ import (
 	"time"
 
 	"github.com/chals-go/valkey-sentinel-manager/internal/models"
+	"github.com/chals-go/valkey-sentinel-manager/internal/store"
 )
 
-// eventStyle은 이벤트 타입별 Slack 이모지와 레이블을 매핑하는 변수이다.
-var eventStyle = map[models.EventType]struct {
-	icon  string
-	label string
-}{
-	models.EventTypeFailover:    {icon: ":red_circle:", label: "Primary Failover"},
-	models.EventTypeReplicaDown: {icon: ":warning:", label: "Replica Down"},
-	models.EventTypeReplicaUp:   {icon: ":large_green_circle:", label: "Replica Up"},
+// NotificationEvent는 알림 전송에 필요한 이벤트 데이터를 담는 구조체이다.
+type NotificationEvent struct {
+	EventType string    // primary_failover, replica_down, replica_up, sentinel_down, sentinel_up
+	Name      string    // 그룹/마스터 이름
+	OldNode   string    // failover: 이전 primary
+	NewNode   string    // failover: 새 primary
+	Node      string    // replica/sentinel down/up: 해당 노드
+	DNSRecord string    // DNS 변경 내용 (빈 문자열이면 생략)
+	Timestamp time.Time // 발생 시각
 }
 
-// buildMessageText는 이벤트와 클러스터 정보를 바탕으로 Slack 메시지 본문을 생성한다.
-func buildMessageText(event *models.FailoverEvent, cluster *models.Cluster) string {
-	style, ok := eventStyle[event.EventType]
+// eventMeta는 이벤트 타입별 아이콘과 라벨 메타데이터이다.
+var eventMeta = map[string]struct {
+	icon  string
+	label string
+	color int // Discord embed color
+	theme string // Teams themeColor
+}{
+	"primary_failover": {icon: ":red_circle:", label: "Primary Failover", color: 0xE74C3C, theme: "FF0000"},
+	"replica_down":     {icon: ":warning:", label: "Replica Down", color: 0xF39C12, theme: "FFA500"},
+	"replica_up":       {icon: ":large_green_circle:", label: "Replica Up", color: 0x2ECC71, theme: "00FF00"},
+	"sentinel_down":    {icon: ":red_circle:", label: "Sentinel Node Down", color: 0xE74C3C, theme: "FF0000"},
+	"sentinel_up":      {icon: ":large_green_circle:", label: "Sentinel Node Up", color: 0x2ECC71, theme: "00FF00"},
+}
+
+// renderText는 이벤트를 텍스트 메시지로 렌더링한다.
+func renderText(e NotificationEvent) string {
+	meta, ok := eventMeta[e.EventType]
 	if !ok {
-		style = struct {
-			icon  string
-			label string
-		}{icon: ":information_source:", label: string(event.EventType)}
+		meta = eventMeta["primary_failover"]
 	}
-
-	ts := time.Unix(int64(event.Timestamp), 0).Format("2006-01-02 15:04:05")
-
-	var nodeInfo string
-	if event.EventType == models.EventTypeFailover {
-		nodeInfo = fmt.Sprintf("%s:%d → %s:%d", event.FromIP, event.FromPort, event.ToIP, event.ToPort)
-	} else {
-		nodeInfo = fmt.Sprintf("%s:%d", event.FromIP, event.FromPort)
+	var lines []string
+	lines = append(lines, fmt.Sprintf("%s *%s*", meta.icon, meta.label))
+	lines = append(lines, fmt.Sprintf("Name : %s", e.Name))
+	if e.OldNode != "" && e.NewNode != "" {
+		lines = append(lines, fmt.Sprintf("Node : %s → %s", e.OldNode, e.NewNode))
+	} else if e.Node != "" {
+		lines = append(lines, fmt.Sprintf("Node : %s", e.Node))
 	}
-
-	var dnsInfo string
-	if cluster != nil && cluster.DNSProvider != "" {
-		switch event.EventType {
-		case models.EventTypeFailover:
-			fqdn := cluster.PrimaryDNS.RecordName + "." + cluster.PrimaryDNS.Zone
-			dnsInfo = fmt.Sprintf("DNS : %s → %s", fqdn, event.ToIP)
-		case models.EventTypeReplicaDown:
-			if cluster.ReplicaDNS != nil {
-				fqdn := cluster.ReplicaDNS.RecordName + "." + cluster.ReplicaDNS.Zone
-				dnsInfo = fmt.Sprintf("DNS : %s -= %s", fqdn, event.FromIP)
-			}
-		case models.EventTypeReplicaUp:
-			if cluster.ReplicaDNS != nil {
-				fqdn := cluster.ReplicaDNS.RecordName + "." + cluster.ReplicaDNS.Zone
-				dnsInfo = fmt.Sprintf("DNS : %s += %s", fqdn, event.FromIP)
-			}
-		}
+	if e.DNSRecord != "" {
+		lines = append(lines, fmt.Sprintf("DNS  : %s", e.DNSRecord))
 	}
-
-	lines := []string{
-		fmt.Sprintf("%s *%s*", style.icon, style.label),
-		fmt.Sprintf("Name : %s", event.MasterName),
-		fmt.Sprintf("Node : %s", nodeInfo),
-	}
-	if dnsInfo != "" {
-		lines = append(lines, dnsInfo)
-	}
-	lines = append(lines, fmt.Sprintf("Time : %s (KST)", ts))
-
+	lines = append(lines, fmt.Sprintf("Time : %s (KST)", e.Timestamp.Format("2006-01-02 15:04:05")))
 	return strings.Join(lines, "\n")
 }
 
-// postSlackWebhook은 공통 Slack 웹훅 HTTP POST 로직을 처리하는 내부 헬퍼 함수다.
-func postSlackWebhook(ctx context.Context, webhookURL, text, channel string) bool {
-	payload := map[string]string{
-		"text":       text,
-		"username":   "Sentinel Manager",
-		"icon_emoji": ":satellite:",
+// renderPlainText는 이모지 없는 플레인 텍스트 메시지를 렌더링한다.
+func renderPlainText(e NotificationEvent) string {
+	meta, ok := eventMeta[e.EventType]
+	if !ok {
+		meta = eventMeta["primary_failover"]
 	}
-	if channel != "" {
-		if !strings.HasPrefix(channel, "#") {
-			channel = "#" + channel
-		}
-		payload["channel"] = channel
+	var lines []string
+	lines = append(lines, fmt.Sprintf("[%s]", meta.label))
+	lines = append(lines, fmt.Sprintf("Name : %s", e.Name))
+	if e.OldNode != "" && e.NewNode != "" {
+		lines = append(lines, fmt.Sprintf("Node : %s → %s", e.OldNode, e.NewNode))
+	} else if e.Node != "" {
+		lines = append(lines, fmt.Sprintf("Node : %s", e.Node))
 	}
+	if e.DNSRecord != "" {
+		lines = append(lines, fmt.Sprintf("DNS  : %s", e.DNSRecord))
+	}
+	lines = append(lines, fmt.Sprintf("Time : %s (KST)", e.Timestamp.Format("2006-01-02 15:04:05")))
+	return strings.Join(lines, "\n")
+}
 
+// postJSON은 JSON 페이로드를 HTTP POST로 전송하는 공통 헬퍼이다.
+func postJSON(ctx context.Context, url string, payload any, headers map[string]string) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
-		slog.Error("failed to marshal slack payload", "error", err)
-		return false
+		return fmt.Errorf("marshal payload: %w", err)
 	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		slog.Error("failed to create slack request", "error", err)
-		return false
+		return fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		slog.Error("slack webhook post failed", "error", err)
-		return false
+		return fmt.Errorf("http post: %w", err)
 	}
 	defer resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
-}
-
-// SendSlackNotification은 이벤트 알림을 Slack 인커밍 웹훅으로 전송한다.
-func SendSlackNotification(ctx context.Context, webhookURL string, event *models.FailoverEvent, cluster *models.Cluster, channel string) bool {
-	text := buildMessageText(event, cluster)
-	ok := postSlackWebhook(ctx, webhookURL, text, channel)
-	if ok {
-		slog.Info("slack notification sent", "summary", strings.SplitN(text, "\n", 2)[0])
-	} else {
-		slog.Warn("slack notification failed")
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("http status %d", resp.StatusCode)
 	}
-	return ok
+	return nil
 }
 
-// SendSentinelDownSlack은 센티널 노드 다운 알림을 Slack으로 전송한다.
-func SendSentinelDownSlack(ctx context.Context, webhookURL, channel, nodeName, addr, groupName string) bool {
-	text := fmt.Sprintf(":red_circle: *Sentinel Node Down*\nGroup : %s\nNode  : %s\nAddr  : %s\nTime  : %s (KST)",
-		groupName, nodeName, addr, time.Now().Format("2006-01-02 15:04:05"))
-	return postSlackWebhook(ctx, webhookURL, text, channel)
+// --- Slack Provider ---
+
+func sendSlack(ctx context.Context, ep *models.WebhookEndpoint, e NotificationEvent) error {
+	payload := map[string]string{
+		"text":       renderText(e),
+		"username":   "Sentinel Manager",
+		"icon_emoji": ":satellite:",
+	}
+	if ep.Channel != "" {
+		ch := ep.Channel
+		if !strings.HasPrefix(ch, "#") {
+			ch = "#" + ch
+		}
+		payload["channel"] = ch
+	}
+	return postJSON(ctx, ep.URL, payload, nil)
 }
 
-// SendSentinelUpSlack은 센티널 노드 복구 알림을 Slack으로 전송한다.
-func SendSentinelUpSlack(ctx context.Context, webhookURL, channel, nodeName, addr, groupName string) bool {
-	text := fmt.Sprintf(":large_green_circle: *Sentinel Node Up*\nGroup : %s\nNode  : %s\nAddr  : %s\nTime  : %s (KST)",
-		groupName, nodeName, addr, time.Now().Format("2006-01-02 15:04:05"))
-	return postSlackWebhook(ctx, webhookURL, text, channel)
+// --- Discord Provider ---
+
+func sendDiscord(ctx context.Context, ep *models.WebhookEndpoint, e NotificationEvent) error {
+	meta := eventMeta[e.EventType]
+
+	var fields []map[string]any
+	fields = append(fields, map[string]any{"name": "Name", "value": e.Name, "inline": true})
+	if e.OldNode != "" && e.NewNode != "" {
+		fields = append(fields, map[string]any{"name": "Node", "value": e.OldNode + " → " + e.NewNode, "inline": false})
+	} else if e.Node != "" {
+		fields = append(fields, map[string]any{"name": "Node", "value": e.Node, "inline": true})
+	}
+	if e.DNSRecord != "" {
+		fields = append(fields, map[string]any{"name": "DNS", "value": e.DNSRecord, "inline": false})
+	}
+	fields = append(fields, map[string]any{"name": "Time", "value": e.Timestamp.Format("2006-01-02 15:04:05") + " (KST)", "inline": true})
+
+	payload := map[string]any{
+		"username": "Sentinel Manager",
+		"embeds": []map[string]any{{
+			"title":  meta.label,
+			"color":  meta.color,
+			"fields": fields,
+		}},
+	}
+	return postJSON(ctx, ep.URL, payload, nil)
+}
+
+// --- Teams Provider ---
+
+func sendTeams(ctx context.Context, ep *models.WebhookEndpoint, e NotificationEvent) error {
+	meta := eventMeta[e.EventType]
+
+	var facts []map[string]string
+	facts = append(facts, map[string]string{"name": "Name", "value": e.Name})
+	if e.OldNode != "" && e.NewNode != "" {
+		facts = append(facts, map[string]string{"name": "Node", "value": e.OldNode + " → " + e.NewNode})
+	} else if e.Node != "" {
+		facts = append(facts, map[string]string{"name": "Node", "value": e.Node})
+	}
+	if e.DNSRecord != "" {
+		facts = append(facts, map[string]string{"name": "DNS", "value": e.DNSRecord})
+	}
+	facts = append(facts, map[string]string{"name": "Time", "value": e.Timestamp.Format("2006-01-02 15:04:05") + " (KST)"})
+
+	payload := map[string]any{
+		"@type":      "MessageCard",
+		"@context":   "http://schema.org/extensions",
+		"themeColor": meta.theme,
+		"title":      meta.label,
+		"sections":   []map[string]any{{"facts": facts}},
+	}
+	return postJSON(ctx, ep.URL, payload, nil)
+}
+
+// --- 카카오워크 Provider ---
+
+func sendKakaoWork(ctx context.Context, ep *models.WebhookEndpoint, e NotificationEvent) error {
+	payload := map[string]string{
+		"conversation_id": ep.ConversationID,
+		"text":            renderPlainText(e),
+	}
+	headers := map[string]string{
+		"Authorization": "Bearer " + ep.AppKey,
+	}
+	return postJSON(ctx, ep.URL, payload, headers)
+}
+
+// --- Custom Provider ---
+
+func sendCustom(ctx context.Context, ep *models.WebhookEndpoint, e NotificationEvent) error {
+	var payload any
+
+	if ep.PayloadMode == "json" {
+		p := map[string]any{
+			"event_type": e.EventType,
+			"name":       e.Name,
+			"timestamp":  e.Timestamp.Format(time.RFC3339),
+		}
+		if e.OldNode != "" {
+			p["old_node"] = e.OldNode
+		}
+		if e.NewNode != "" {
+			p["new_node"] = e.NewNode
+		}
+		if e.Node != "" {
+			p["node"] = e.Node
+		}
+		if e.DNSRecord != "" {
+			p["dns_record"] = e.DNSRecord
+		}
+		payload = p
+	} else {
+		key := ep.BodyKey
+		if key == "" {
+			key = "text"
+		}
+		payload = map[string]string{key: renderText(e)}
+	}
+
+	return postJSON(ctx, ep.URL, payload, ep.CustomHeaders)
+}
+
+// --- 발송 디스패처 ---
+
+// sendToEndpoint는 웹훅 타입에 따라 적절한 provider로 이벤트를 전송한다.
+func sendToEndpoint(ctx context.Context, ep *models.WebhookEndpoint, e NotificationEvent) error {
+	switch ep.Type {
+	case models.WebhookTypeSlack:
+		return sendSlack(ctx, ep, e)
+	case models.WebhookTypeDiscord:
+		return sendDiscord(ctx, ep, e)
+	case models.WebhookTypeTeams:
+		return sendTeams(ctx, ep, e)
+	case models.WebhookTypeKakaoWork:
+		return sendKakaoWork(ctx, ep, e)
+	case models.WebhookTypeCustom:
+		return sendCustom(ctx, ep, e)
+	default:
+		return fmt.Errorf("unknown webhook type: %s", ep.Type)
+	}
+}
+
+// SendNotifications는 활성화된 모든 웹훅 엔드포인트로 이벤트를 전송한다.
+func SendNotifications(ctx context.Context, s store.Store, e NotificationEvent) {
+	webhooks, err := s.ListWebhooks(ctx)
+	if err != nil {
+		slog.Error("failed to list webhooks for notification", "error", err)
+		return
+	}
+	for _, wh := range webhooks {
+		if !wh.Enabled {
+			continue
+		}
+		if err := sendToEndpoint(ctx, wh, e); err != nil {
+			slog.Error("webhook send failed", "id", wh.ID, "name", wh.Name, "type", wh.Type, "error", err)
+		} else {
+			slog.Info("webhook notification sent", "id", wh.ID, "name", wh.Name, "type", wh.Type)
+		}
+	}
+}
+
+// SendTestNotification은 지정된 웹훅으로 테스트 이벤트를 전송한다.
+func SendTestNotification(ctx context.Context, ep *models.WebhookEndpoint) error {
+	e := NotificationEvent{
+		EventType: "primary_failover",
+		Name:      "test-master",
+		OldNode:   "10.0.0.1:6379",
+		NewNode:   "10.0.0.2:6379",
+		DNSRecord: "primary-test.example.com → 10.0.0.2",
+		Timestamp: time.Now(),
+	}
+	return sendToEndpoint(ctx, ep, e)
 }

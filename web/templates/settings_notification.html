@@ -1,0 +1,200 @@
+{{ define "settings-notification-content" }}
+<div class="flex items-center justify-between mb-8">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900">{{ t "notification" }}</h1>
+    <p class="text-sm text-slate-500 mt-1">{{ t "notification_desc" }}</p>
+  </div>
+  <button data-modal-open="modal-webhook-new" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">+ {{ t "add_webhook" }}</button>
+</div>
+
+{{ $webhooks := .Data.Webhooks }}
+{{ if $webhooks }}
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+  <table class="w-full">
+    <thead>
+      <tr>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b">{{ t "webhook_name" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b">{{ t "webhook_type" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 border-b">URL</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-400 border-b">{{ t "status" }}</th>
+        <th class="bg-gray-50/80 px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400 border-b"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ range $wh := $webhooks }}
+      <tr class="hover:bg-gray-50/50 transition-colors">
+        <td class="px-6 py-4 border-b border-gray-50 text-sm font-medium text-slate-900">{{ $wh.Name }}</td>
+        <td class="px-6 py-4 border-b border-gray-50">
+          {{ if eq $wh.Type "slack" }}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">Slack</span>
+          {{ else if eq $wh.Type "discord" }}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">Discord</span>
+          {{ else if eq $wh.Type "teams" }}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">Teams</span>
+          {{ else if eq $wh.Type "kakaowork" }}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">Kakao Work</span>
+          {{ else }}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-700 border border-gray-200">Custom</span>
+          {{ end }}
+        </td>
+        <td class="px-6 py-4 border-b border-gray-50 font-mono text-xs text-slate-500 max-w-xs truncate">{{ $wh.URL }}</td>
+        <td class="px-6 py-4 border-b border-gray-50 text-center">
+          {{ if $wh.Enabled }}
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "webhook_enabled" }}</span>
+          {{ else }}
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200"><span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>{{ t "webhook_disabled" }}</span>
+          {{ end }}
+        </td>
+        <td class="px-6 py-4 border-b border-gray-50 text-right">
+          <div class="flex items-center justify-end gap-1">
+            <form method="post" action="/admin/webhook/{{ $wh.ID }}/toggle" class="inline">
+              <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+              <button type="submit" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors" title="{{ if $wh.Enabled }}Disable{{ else }}Enable{{ end }}">
+                {{ if $wh.Enabled }}
+                <svg aria-hidden="true" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/></svg>
+                {{ else }}
+                <svg aria-hidden="true" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/></svg>
+                {{ end }}
+              </button>
+            </form>
+            <form method="post" action="/admin/webhook/{{ $wh.ID }}/test" class="inline">
+              <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+              <button type="submit" class="p-1.5 text-slate-400 hover:text-emerald-600 rounded-md hover:bg-emerald-50 transition-colors" title="{{ t "test_send" }}">
+                <svg aria-hidden="true" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>
+              </button>
+            </form>
+            <button data-modal-open="modal-webhook-edit-{{ $wh.ID }}" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors" title="{{ t "edit" }}">
+              <svg aria-hidden="true" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+            </button>
+            <button data-modal-open="modal-webhook-delete-{{ $wh.ID }}" class="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors" title="{{ t "delete" }}">
+              <svg aria-hidden="true" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+
+      <!-- Edit Modal -->
+      <div id="modal-webhook-edit-{{ $wh.ID }}" class="modal-overlay" role="dialog" aria-modal="true">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-bold text-slate-900">{{ t "edit_webhook" }}</h2>
+            <button data-modal-close="modal-webhook-edit-{{ $wh.ID }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+          </div>
+          <form method="post" action="/admin/webhook/{{ $wh.ID }}/edit">
+            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+            {{ template "webhook-form-fields" $wh }}
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <button type="button" data-modal-close="modal-webhook-edit-{{ $wh.ID }}" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+              <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "save" }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Delete Modal -->
+      <div id="modal-webhook-delete-{{ $wh.ID }}" class="modal-overlay" role="dialog" aria-modal="true">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+          <h2 class="text-lg font-bold text-slate-900 mb-2">{{ t "delete_webhook" }}</h2>
+          <p class="text-sm text-slate-500 mb-6">{{ t "delete_webhook_confirm" }}</p>
+          <div class="flex justify-end gap-3">
+            <button type="button" data-modal-close="modal-webhook-delete-{{ $wh.ID }}" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+            <form method="post" action="/admin/webhook/{{ $wh.ID }}/delete">
+              <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+              <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">{{ t "delete" }}</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {{ end }}
+    </tbody>
+  </table>
+</div>
+{{ else }}
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+  <p class="text-sm text-slate-400">{{ t "no_webhooks" }}</p>
+  <button data-modal-open="modal-webhook-new" class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">+ {{ t "add_webhook" }}</button>
+</div>
+{{ end }}
+
+<!-- Add Webhook Modal -->
+<div id="modal-webhook-new" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-lg font-bold text-slate-900">{{ t "add_webhook" }}</h2>
+      <button data-modal-close="modal-webhook-new" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+    </div>
+    <form method="post" action="/admin/webhook">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+      {{ template "webhook-form-fields" nil }}
+      <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <button type="button" data-modal-close="modal-webhook-new" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
+        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{{ t "save" }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{{ end }}
+
+<!-- Webhook Form Fields (shared between add and edit) -->
+{{ define "webhook-form-fields" }}
+<div class="space-y-4 mb-6">
+  <div>
+    <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "webhook_name" }}</label>
+    <input type="text" name="name" required value="{{ if . }}{{ .Name }}{{ end }}" placeholder="운영팀 알림" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+  </div>
+  <div>
+    <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "webhook_type" }}</label>
+    <select name="type" data-webhook-type-select class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+      <option value="slack" {{ if and . (eq .Type "slack") }}selected{{ end }}>Slack</option>
+      <option value="discord" {{ if and . (eq .Type "discord") }}selected{{ end }}>Discord</option>
+      <option value="teams" {{ if and . (eq .Type "teams") }}selected{{ end }}>Microsoft Teams</option>
+      <option value="kakaowork" {{ if and . (eq .Type "kakaowork") }}selected{{ end }}>Kakao Work</option>
+      <option value="custom" {{ if and . (eq .Type "custom") }}selected{{ end }}>Custom</option>
+    </select>
+  </div>
+  <div data-wh-field="url">
+    <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "webhook_url" }}</label>
+    <input type="url" name="url" value="{{ if . }}{{ .URL }}{{ end }}" placeholder="https://hooks.slack.com/services/..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+  </div>
+
+  <!-- Slack: Channel -->
+  <div data-wh-field="channel" class="{{ if not (and . (eq .Type "slack")) }}hidden{{ end }}">
+    <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "channel_name" }} (optional)</label>
+    <input type="text" name="channel" value="{{ if . }}{{ .Channel }}{{ end }}" placeholder="#alerts" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+  </div>
+
+  <!-- Kakao Work: App Key + Conversation ID -->
+  <div data-wh-field="kakaowork" class="{{ if not (and . (eq .Type "kakaowork")) }}hidden{{ end }}">
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "app_key" }}</label>
+      <input type="password" name="app_key" value="{{ if . }}{{ .AppKey }}{{ end }}" placeholder="Bot App Key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "conversation_id" }}</label>
+      <input type="text" name="conversation_id" value="{{ if . }}{{ .ConversationID }}{{ end }}" placeholder="채팅방 ID" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+    </div>
+  </div>
+
+  <!-- Custom: Payload Mode + Body Key + Headers -->
+  <div data-wh-field="custom" class="{{ if not (and . (eq .Type "custom")) }}hidden{{ end }}">
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "payload_mode" }}</label>
+      <div class="flex gap-4">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="payload_mode" value="text" {{ if or (not .) (and . (ne .PayloadMode "json")) }}checked{{ end }} data-payload-mode class="accent-indigo-600">
+          <span class="text-sm text-slate-700">{{ t "payload_text" }}</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="payload_mode" value="json" {{ if and . (eq .PayloadMode "json") }}checked{{ end }} data-payload-mode class="accent-indigo-600">
+          <span class="text-sm text-slate-700">{{ t "payload_json" }}</span>
+        </label>
+      </div>
+    </div>
+    <div data-wh-field="body_key" class="{{ if and . (eq .PayloadMode "json") }}hidden{{ end }}">
+      <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "body_key" }}</label>
+      <input type="text" name="body_key" value="{{ if and . .BodyKey }}{{ .BodyKey }}{{ else }}text{{ end }}" placeholder="text" class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+    </div>
+    <div class="mt-4">
+      <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "custom_headers" }}</label>
+      <textarea name="custom_headers" rows="2" placeholder='{"X-API-Key": "xxx"}' class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">{{ if and . .CustomHeaders }}{{ range $k, $v := .CustomHeaders }}{"{{ $k }}": "{{ $v }}"}{{ end }}{{ end }}</textarea>
+      <p class="text-xs text-slate-400 mt-1">{{ t "custom_headers_hint" }}</p>
+    </div>
+  </div>
+</div>
+{{ end }}

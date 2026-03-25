@@ -24,8 +24,9 @@ import (
 //	smgr:group:index                      — cluster master_name set (SET)
 //	smgr:admin:password_hash              — admin password hash
 //	smgr:api:token                        — API bearer token
-//	smgr:slack:webhook_url                — Slack webhook URL
-//	smgr:slack:channel                    — Slack channel
+//	smgr:slack:webhook_url                — Slack webhook URL (legacy, migration only)
+//	smgr:slack:channel                    — Slack channel (legacy, migration only)
+//	smgr:webhooks                         — webhook endpoints (HASH, field=id, value=JSON)
 //	smgr:runtime:settings                 — runtime settings (JSON)
 //	smgr:dns:providers                    — DNS provider configs (HASH, value=JSON)
 
@@ -409,9 +410,72 @@ func (s *ValkeyStore) DeleteAPIToken(ctx context.Context) error {
 	return s.client.Do(ctx, s.client.B().Del().Key("smgr:api:token").Build()).Error()
 }
 
-// === Slack ===
+// === Webhooks ===
 
-// GetSlackWebhookURL은 저장된 Slack 웹훅 URL을 반환한다.
+// SaveWebhook은 웹훅 엔드포인트를 smgr:webhooks HASH에 JSON으로 저장한다.
+func (s *ValkeyStore) SaveWebhook(ctx context.Context, wh *models.WebhookEndpoint) error {
+	data, err := json.Marshal(wh)
+	if err != nil {
+		return err
+	}
+	val := string(data)
+	if s.encrypt != nil {
+		val = s.encrypt(val)
+	}
+	return s.client.Do(ctx, s.client.B().Hset().Key("smgr:webhooks").FieldValue().FieldValue(wh.ID, val).Build()).Error()
+}
+
+// GetWebhook은 ID로 단일 웹훅 엔드포인트를 조회한다.
+func (s *ValkeyStore) GetWebhook(ctx context.Context, id string) (*models.WebhookEndpoint, error) {
+	raw, err := s.client.Do(ctx, s.client.B().Hget().Key("smgr:webhooks").Field(id).Build()).ToString()
+	if err != nil {
+		if valkey.IsValkeyNil(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("getting webhook: %w", err)
+	}
+	if s.decrypt != nil {
+		raw = s.decrypt(raw)
+	}
+	var wh models.WebhookEndpoint
+	if err := json.Unmarshal([]byte(raw), &wh); err != nil {
+		return nil, fmt.Errorf("unmarshaling webhook: %w", err)
+	}
+	return &wh, nil
+}
+
+// ListWebhooks는 저장된 모든 웹훅 엔드포인트를 반환한다.
+func (s *ValkeyStore) ListWebhooks(ctx context.Context) ([]*models.WebhookEndpoint, error) {
+	rawMap, err := s.client.Do(ctx, s.client.B().Hgetall().Key("smgr:webhooks").Build()).AsStrMap()
+	if err != nil {
+		if valkey.IsValkeyNil(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("listing webhooks: %w", err)
+	}
+	out := make([]*models.WebhookEndpoint, 0, len(rawMap))
+	for id, raw := range rawMap {
+		if s.decrypt != nil {
+			raw = s.decrypt(raw)
+		}
+		var wh models.WebhookEndpoint
+		if err := json.Unmarshal([]byte(raw), &wh); err != nil {
+			slog.Warn("skipping malformed webhook", "id", id, "error", err)
+			continue
+		}
+		out = append(out, &wh)
+	}
+	return out, nil
+}
+
+// DeleteWebhook은 ID로 웹훅 엔드포인트를 삭제한다.
+func (s *ValkeyStore) DeleteWebhook(ctx context.Context, id string) error {
+	return s.client.Do(ctx, s.client.B().Hdel().Key("smgr:webhooks").Field(id).Build()).Error()
+}
+
+// === Slack (Migration Legacy) ===
+
+// GetSlackWebhookURL은 저장된 Slack 웹훅 URL을 반환한다. 마이그레이션 용도로만 사용한다.
 func (s *ValkeyStore) GetSlackWebhookURL(ctx context.Context) (string, error) {
 	val, err := s.client.Do(ctx, s.client.B().Get().Key("smgr:slack:webhook_url").Build()).ToString()
 	if err != nil {
@@ -426,20 +490,7 @@ func (s *ValkeyStore) GetSlackWebhookURL(ctx context.Context) (string, error) {
 	return val, nil
 }
 
-// SetSlackWebhookURL은 Slack 웹훅 URL을 저장한다.
-func (s *ValkeyStore) SetSlackWebhookURL(ctx context.Context, url string) error {
-	if s.encrypt != nil {
-		url = s.encrypt(url)
-	}
-	return s.client.Do(ctx, s.client.B().Set().Key("smgr:slack:webhook_url").Value(url).Build()).Error()
-}
-
-// DeleteSlackWebhookURL은 Slack 웹훅 URL을 삭제한다.
-func (s *ValkeyStore) DeleteSlackWebhookURL(ctx context.Context) error {
-	return s.client.Do(ctx, s.client.B().Del().Key("smgr:slack:webhook_url").Build()).Error()
-}
-
-// GetSlackChannel은 저장된 Slack 채널 이름을 반환한다.
+// GetSlackChannel은 저장된 Slack 채널 이름을 반환한다. 마이그레이션 용도로만 사용한다.
 func (s *ValkeyStore) GetSlackChannel(ctx context.Context) (string, error) {
 	val, err := s.client.Do(ctx, s.client.B().Get().Key("smgr:slack:channel").Build()).ToString()
 	if err != nil {
@@ -451,9 +502,9 @@ func (s *ValkeyStore) GetSlackChannel(ctx context.Context) (string, error) {
 	return val, nil
 }
 
-// SetSlackChannel은 Slack 채널 이름을 저장한다.
-func (s *ValkeyStore) SetSlackChannel(ctx context.Context, channel string) error {
-	return s.client.Do(ctx, s.client.B().Set().Key("smgr:slack:channel").Value(channel).Build()).Error()
+// DeleteSlackLegacy는 레거시 Slack 키(smgr:slack:webhook_url, smgr:slack:channel)를 모두 삭제한다.
+func (s *ValkeyStore) DeleteSlackLegacy(ctx context.Context) error {
+	return s.client.Do(ctx, s.client.B().Del().Key("smgr:slack:webhook_url", "smgr:slack:channel").Build()).Error()
 }
 
 // === Runtime Settings ===

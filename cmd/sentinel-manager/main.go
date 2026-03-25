@@ -12,6 +12,7 @@ import (
 
 	vsm "github.com/chals-go/valkey-sentinel-manager"
 	"github.com/chals-go/valkey-sentinel-manager/internal/api"
+	"github.com/chals-go/valkey-sentinel-manager/internal/models"
 	"github.com/chals-go/valkey-sentinel-manager/internal/config"
 	"github.com/chals-go/valkey-sentinel-manager/internal/core"
 	"github.com/chals-go/valkey-sentinel-manager/internal/dns"
@@ -169,6 +170,22 @@ func main() {
 		}
 		dnsProviders[name] = p
 		slog.Info("DNS provider loaded", "name", name, "type", decrypted["type"])
+	}
+
+	// Migrate legacy Slack webhook to new webhook system.
+	if slackURL, _ := st.GetSlackWebhookURL(ctx); slackURL != "" {
+		channel, _ := st.GetSlackChannel(ctx)
+		wh := &models.WebhookEndpoint{
+			ID:      "wh_slack_migrated",
+			Name:    "Slack (migrated)",
+			Type:    models.WebhookTypeSlack,
+			URL:     slackURL,
+			Enabled: true,
+			Channel: channel,
+		}
+		st.SaveWebhook(ctx, wh)
+		st.DeleteSlackLegacy(ctx)
+		slog.Info("migrated legacy Slack webhook to new webhook system")
 	}
 
 	// Initialize core services.

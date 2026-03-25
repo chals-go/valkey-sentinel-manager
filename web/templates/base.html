@@ -62,9 +62,9 @@
               {{ if eq .Page "settings-token" }}bg-indigo-600/20 text-white font-medium{{ else }}text-slate-400 hover:bg-slate-700/50 hover:text-white{{ end }}">
       {{ template "icon-token" }} {{ t "api_token" }}
     </a>
-    <a href="/admin/settings/slack"
+    <a href="/admin/settings/notification"
        class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
-              {{ if eq .Page "settings-slack" }}bg-indigo-600/20 text-white font-medium{{ else }}text-slate-400 hover:bg-slate-700/50 hover:text-white{{ end }}">
+              {{ if eq .Page "settings-notification" }}bg-indigo-600/20 text-white font-medium{{ else }}text-slate-400 hover:bg-slate-700/50 hover:text-white{{ end }}">
       {{ template "icon-slack" }} {{ t "notification" }}
     </a>
 
@@ -124,7 +124,7 @@
 {{ else if eq .Page "settings-server" }}{{ template "settings-server-content" . }}
 {{ else if eq .Page "settings-dns" }}{{ template "settings-dns-content" . }}
 {{ else if eq .Page "settings-token" }}{{ template "settings-token-content" . }}
-{{ else if eq .Page "settings-slack" }}{{ template "settings-slack-content" . }}
+{{ else if eq .Page "settings-notification" }}{{ template "settings-notification-content" . }}
 {{ else if eq .Page "settings-account" }}{{ template "settings-account-content" . }}
 {{ else if eq .Page "cluster-form" }}{{ template "cluster-form-content" . }}
 {{ else if eq .Page "cluster-edit" }}{{ template "cluster-edit-content" . }}

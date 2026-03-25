@@ -60,12 +60,39 @@ func (fm *FailoverManager) HandleEvent(ctx context.Context, event *models.Failov
 }
 
 func (fm *FailoverManager) sendNotification(ctx context.Context, event *models.FailoverEvent, cluster *models.Cluster) {
-	webhookURL, err := fm.store.GetSlackWebhookURL(ctx)
-	if err != nil || webhookURL == "" {
-		return
+	ts := time.Now()
+	if event.Timestamp > 0 {
+		ts = time.Unix(int64(event.Timestamp), 0)
 	}
-	channel, _ := fm.store.GetSlackChannel(ctx)
-	SendSlackNotification(ctx, webhookURL, event, cluster, channel)
+
+	ne := NotificationEvent{
+		Name:      event.MasterName,
+		Timestamp: ts,
+	}
+
+	switch event.EventType {
+	case models.EventTypeFailover:
+		ne.EventType = "primary_failover"
+		ne.OldNode = fmt.Sprintf("%s:%d", event.FromIP, event.FromPort)
+		ne.NewNode = fmt.Sprintf("%s:%d", event.ToIP, event.ToPort)
+		if cluster != nil && cluster.DNSProvider != "" {
+			ne.DNSRecord = fmt.Sprintf("%s.%s → %s", cluster.PrimaryDNS.RecordName, cluster.PrimaryDNS.Zone, event.ToIP)
+		}
+	case models.EventTypeReplicaDown:
+		ne.EventType = "replica_down"
+		ne.Node = fmt.Sprintf("%s:%d", event.FromIP, event.FromPort)
+		if cluster != nil && cluster.DNSProvider != "" && cluster.ReplicaDNS != nil {
+			ne.DNSRecord = fmt.Sprintf("%s.%s -= %s", cluster.ReplicaDNS.RecordName, cluster.ReplicaDNS.Zone, event.FromIP)
+		}
+	case models.EventTypeReplicaUp:
+		ne.EventType = "replica_up"
+		ne.Node = fmt.Sprintf("%s:%d", event.FromIP, event.FromPort)
+		if cluster != nil && cluster.DNSProvider != "" && cluster.ReplicaDNS != nil {
+			ne.DNSRecord = fmt.Sprintf("%s.%s += %s", cluster.ReplicaDNS.RecordName, cluster.ReplicaDNS.Zone, event.FromIP)
+		}
+	}
+
+	SendNotifications(ctx, fm.store, ne)
 }
 
 func validateIP(ip string) bool {

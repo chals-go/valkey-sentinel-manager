@@ -2,6 +2,8 @@ package web
 
 import (
 	"context"
+	crypto_rand "crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,7 +11,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -142,10 +143,12 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /admin/settings/token", protect(http.HandlerFunc(h.SettingsToken)))
 	mux.Handle("POST /admin/regenerate-token", protect(http.HandlerFunc(h.RegenerateToken)))
 	mux.Handle("POST /admin/delete-token", protect(http.HandlerFunc(h.DeleteToken)))
-	mux.Handle("GET /admin/settings/slack", protect(http.HandlerFunc(h.SettingsSlack)))
-	mux.Handle("POST /admin/slack-webhook", protect(http.HandlerFunc(h.SlackWebhookSave)))
-	mux.Handle("POST /admin/slack-webhook/delete", protect(http.HandlerFunc(h.SlackWebhookDelete)))
-	mux.Handle("POST /admin/slack-webhook/test", protect(http.HandlerFunc(h.SlackWebhookTest)))
+	mux.Handle("GET /admin/settings/notification", protect(http.HandlerFunc(h.SettingsNotification)))
+	mux.Handle("POST /admin/webhook", protect(http.HandlerFunc(h.WebhookCreate)))
+	mux.Handle("POST /admin/webhook/{id}/edit", protect(http.HandlerFunc(h.WebhookEdit)))
+	mux.Handle("POST /admin/webhook/{id}/delete", protect(http.HandlerFunc(h.WebhookDelete)))
+	mux.Handle("POST /admin/webhook/{id}/test", protect(http.HandlerFunc(h.WebhookTest)))
+	mux.Handle("POST /admin/webhook/{id}/toggle", protect(http.HandlerFunc(h.WebhookToggle)))
 	mux.Handle("GET /admin/settings/account", protect(http.HandlerFunc(h.SettingsAccount)))
 	mux.Handle("POST /admin/settings/account", protect(http.HandlerFunc(h.SettingsAccountSubmit)))
 }
@@ -1593,112 +1596,156 @@ func (h *AdminHandler) DeleteToken(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// === Settings: Slack ===
+// === Settings: Notification ===
 
-// SettingsSlack은 Slack 알림 설정 페이지를 렌더링한다.
-func (h *AdminHandler) SettingsSlack(w http.ResponseWriter, r *http.Request) {
-	webhook, storeErr := h.store.GetSlackWebhookURL(r.Context())
-	if storeErr != nil { slog.Warn("store error", "method", "GetSlackWebhookURL", "error", storeErr) }
-	channel, storeErr := h.store.GetSlackChannel(r.Context())
-	if storeErr != nil { slog.Warn("store error", "method", "GetSlackChannel", "error", storeErr) }
+// generateWebhookID는 웹훅 고유 ID를 생성한다.
+func generateWebhookID() (string, error) {
+	b := make([]byte, 8)
+	if _, err := crypto_rand.Read(b); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("wh_%s", hex.EncodeToString(b)), nil
+}
+
+// SettingsNotification은 알림 설정 페이지를 렌더링한다.
+func (h *AdminHandler) SettingsNotification(w http.ResponseWriter, r *http.Request) {
+	webhooks, storeErr := h.store.ListWebhooks(r.Context())
+	if storeErr != nil { slog.Warn("store error", "method", "ListWebhooks", "error", storeErr) }
 	h.render(w, r, "base", PageData{
-		Page: "settings-slack",
-		Data: map[string]any{"WebhookURL": webhook, "Channel": channel},
+		Page: "settings-notification",
+		Data: map[string]any{"Webhooks": webhooks},
 	})
 }
 
-// SlackWebhookSave는 Slack Webhook URL 및 채널 설정 저장 요청을 처리한다.
-func (h *AdminHandler) SlackWebhookSave(w http.ResponseWriter, r *http.Request) {
+// WebhookCreate는 새 웹훅 엔드포인트를 생성하여 저장한다.
+func (h *AdminHandler) WebhookCreate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "invalid form data", http.StatusBadRequest)
 		return
 	}
-	t := NewTranslator(h.getLang())
 
-	webhookURL := strings.TrimSpace(r.FormValue("slack_webhook_url"))
-	channel := strings.TrimSpace(r.FormValue("slack_channel"))
-
-	if webhookURL == "" {
-		h.render(w, r, "base", PageData{
-			Page: "settings-slack", FlashMessage: t("flash_webhook_required"), FlashType: "error",
-			Data: map[string]any{"WebhookURL": "", "Channel": channel},
-		})
+	id, err := generateWebhookID()
+	if err != nil {
+		http.Error(w, "failed to generate ID", http.StatusInternalServerError)
 		return
 	}
 
-	if u, err := url.Parse(webhookURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") {
-		h.render(w, r, "base", PageData{
-			Page: "settings-slack", FlashMessage: t("flash_webhook_invalid_url"), FlashType: "error",
-			Data: map[string]any{"WebhookURL": webhookURL, "Channel": channel},
-		})
+	whType := strings.TrimSpace(r.FormValue("type"))
+	url := strings.TrimSpace(r.FormValue("url"))
+	if whType == models.WebhookTypeKakaoWork {
+		url = "https://api.kakaowork.com/v1/messages.send"
+	}
+
+	wh := &models.WebhookEndpoint{
+		ID:             id,
+		Name:           strings.TrimSpace(r.FormValue("name")),
+		Type:           whType,
+		URL:            url,
+		Enabled:        true,
+		Channel:        strings.TrimSpace(r.FormValue("channel")),
+		AppKey:         strings.TrimSpace(r.FormValue("app_key")),
+		ConversationID: strings.TrimSpace(r.FormValue("conversation_id")),
+		PayloadMode:    r.FormValue("payload_mode"),
+		BodyKey:        strings.TrimSpace(r.FormValue("body_key")),
+	}
+
+	// Parse custom headers
+	headersJSON := strings.TrimSpace(r.FormValue("custom_headers"))
+	if headersJSON != "" {
+		var headers map[string]string
+		if json.Unmarshal([]byte(headersJSON), &headers) == nil {
+			wh.CustomHeaders = headers
+		}
+	}
+
+	h.store.SaveWebhook(ctx, wh)
+	h.redirect(w, r, "/admin/settings/notification")
+}
+
+// WebhookEdit은 기존 웹훅 엔드포인트를 수정하여 저장한다.
+func (h *AdminHandler) WebhookEdit(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
+	id := r.PathValue("id")
+	wh, err := h.store.GetWebhook(ctx, id)
+	if err != nil {
+		h.redirect(w, r, "/admin/settings/notification")
 		return
 	}
 
-	h.store.SetSlackWebhookURL(ctx, webhookURL)
-	if channel != "" {
-		h.store.SetSlackChannel(ctx, channel)
+	wh.Name = strings.TrimSpace(r.FormValue("name"))
+	whType := strings.TrimSpace(r.FormValue("type"))
+	wh.Type = whType
+	if whType == models.WebhookTypeKakaoWork {
+		wh.URL = "https://api.kakaowork.com/v1/messages.send"
+	} else {
+		wh.URL = strings.TrimSpace(r.FormValue("url"))
+	}
+	wh.Channel = strings.TrimSpace(r.FormValue("channel"))
+	wh.AppKey = strings.TrimSpace(r.FormValue("app_key"))
+	wh.ConversationID = strings.TrimSpace(r.FormValue("conversation_id"))
+	wh.PayloadMode = r.FormValue("payload_mode")
+	wh.BodyKey = strings.TrimSpace(r.FormValue("body_key"))
+
+	headersJSON := strings.TrimSpace(r.FormValue("custom_headers"))
+	if headersJSON != "" {
+		var headers map[string]string
+		if json.Unmarshal([]byte(headersJSON), &headers) == nil {
+			wh.CustomHeaders = headers
+		}
+	} else {
+		wh.CustomHeaders = nil
 	}
 
-	h.render(w, r, "base", PageData{
-		Page: "settings-slack", FlashMessage: t("flash_slack_saved"), FlashType: "success",
-		Data: map[string]any{"WebhookURL": webhookURL, "Channel": channel},
-	})
+	h.store.SaveWebhook(ctx, wh)
+	h.redirect(w, r, "/admin/settings/notification")
 }
 
-// SlackWebhookDelete는 저장된 Slack Webhook URL을 삭제하여 알림을 비활성화한다.
-func (h *AdminHandler) SlackWebhookDelete(w http.ResponseWriter, r *http.Request) {
-	t := NewTranslator(h.getLang())
-	h.store.DeleteSlackWebhookURL(r.Context())
-	h.render(w, r, "base", PageData{
-		Page: "settings-slack", FlashMessage: t("flash_slack_disabled"), FlashType: "success",
-		Data: map[string]any{"WebhookURL": "", "Channel": ""},
-	})
+// WebhookDelete는 웹훅 엔드포인트를 삭제한다.
+func (h *AdminHandler) WebhookDelete(w http.ResponseWriter, r *http.Request) {
+	h.store.DeleteWebhook(r.Context(), r.PathValue("id"))
+	h.redirect(w, r, "/admin/settings/notification")
 }
 
-// SlackWebhookTest는 테스트 페일오버 이벤트를 사용하여 Slack 알림 전송을 테스트한다.
-func (h *AdminHandler) SlackWebhookTest(w http.ResponseWriter, r *http.Request) {
+// WebhookTest는 지정된 웹훅 엔드포인트로 테스트 알림을 전송한다.
+func (h *AdminHandler) WebhookTest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	t := NewTranslator(h.getLang())
-
-	webhookURL, storeErr := h.store.GetSlackWebhookURL(ctx)
-	if storeErr != nil { slog.Warn("store error", "method", "GetSlackWebhookURL", "error", storeErr) }
-	if webhookURL == "" {
-		h.render(w, r, "base", PageData{
-			Page: "settings-slack", FlashMessage: t("flash_slack_no_url"), FlashType: "error",
-			Data: map[string]any{"WebhookURL": "", "Channel": ""},
-		})
+	wh, err := h.store.GetWebhook(ctx, r.PathValue("id"))
+	if err != nil {
+		h.redirect(w, r, "/admin/settings/notification")
 		return
 	}
 
-	channel, storeErr := h.store.GetSlackChannel(ctx)
-	if storeErr != nil { slog.Warn("store error", "method", "GetSlackChannel", "error", storeErr) }
-
-	testEvent := &models.FailoverEvent{
-		GroupName: "test-group", MasterName: "mymaster", EventType: models.EventTypeFailover,
-		Role: "leader", State: "promoted",
-		FromIP: "10.0.0.1", FromPort: 6379, ToIP: "10.0.0.2", ToPort: 6379,
-		SentinelNodeName: "test-sentinel",
-		Timestamp:        float64(time.Now().Unix()),
-	}
-	testCluster := &models.Cluster{
-		GroupName: "test-group", MasterName: "mymaster",
-		DNSProvider: "test",
-		PrimaryDNS:  models.DNSMapping{Zone: "example.com", RecordName: "primary.valkey", RecordType: "A", TTL: 3},
-	}
-
-	success := core.SendSlackNotification(ctx, webhookURL, testEvent, testCluster, channel)
-	msg := t("flash_slack_test_sent")
+	webhooks, _ := h.store.ListWebhooks(ctx)
+	testErr := core.SendTestNotification(ctx, wh)
+	msg := t("flash_webhook_test_sent")
 	flashType := "success"
-	if !success {
-		msg = t("flash_slack_test_failed")
+	if testErr != nil {
+		msg = t("flash_webhook_test_failed") + ": " + testErr.Error()
 		flashType = "error"
 	}
-
 	h.render(w, r, "base", PageData{
-		Page: "settings-slack", FlashMessage: msg, FlashType: flashType,
-		Data: map[string]any{"WebhookURL": webhookURL, "Channel": channel},
+		Page: "settings-notification", FlashMessage: msg, FlashType: flashType,
+		Data: map[string]any{"Webhooks": webhooks},
 	})
+}
+
+// WebhookToggle은 웹훅 엔드포인트의 활성화 상태를 토글한다.
+func (h *AdminHandler) WebhookToggle(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	wh, err := h.store.GetWebhook(ctx, r.PathValue("id"))
+	if err != nil {
+		h.redirect(w, r, "/admin/settings/notification")
+		return
+	}
+	wh.Enabled = !wh.Enabled
+	h.store.SaveWebhook(ctx, wh)
+	h.redirect(w, r, "/admin/settings/notification")
 }
 
 // === Settings: Account ===

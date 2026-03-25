@@ -29,8 +29,7 @@ type MemoryStore struct {
 	clusters      map[string]*models.Cluster
 	adminPwHash   string
 	apiToken      string
-	slackWebhook  string
-	slackChannel  string
+	webhooks      map[string]*models.WebhookEndpoint
 	runtimeConfig map[string]string
 	dnsConfigs    map[string]map[string]string
 }
@@ -44,6 +43,7 @@ func NewMemoryStore(dedupWindowSeconds int) *MemoryStore {
 		locks:         make(map[string]float64),
 		sentinels:     make(map[string]*models.Sentinel),
 		clusters:      make(map[string]*models.Cluster),
+		webhooks:      make(map[string]*models.WebhookEndpoint),
 		runtimeConfig: make(map[string]string),
 		dnsConfigs:    make(map[string]map[string]string),
 	}
@@ -277,41 +277,56 @@ func (m *MemoryStore) DeleteAPIToken(_ context.Context) error {
 	return nil
 }
 
-// GetSlackWebhookURL은 저장된 Slack 웹훅 URL을 반환한다.
+// SaveWebhook은 웹훅 엔드포인트를 ID를 키로 하여 저장한다.
+func (m *MemoryStore) SaveWebhook(_ context.Context, wh *models.WebhookEndpoint) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.webhooks[wh.ID] = wh
+	return nil
+}
+
+// GetWebhook은 ID로 웹훅 엔드포인트를 조회한다. 없으면 ErrNotFound를 반환한다.
+func (m *MemoryStore) GetWebhook(_ context.Context, id string) (*models.WebhookEndpoint, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	wh, ok := m.webhooks[id]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	return wh, nil
+}
+
+// ListWebhooks는 저장된 모든 웹훅 엔드포인트를 반환한다.
+func (m *MemoryStore) ListWebhooks(_ context.Context) ([]*models.WebhookEndpoint, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	result := make([]*models.WebhookEndpoint, 0, len(m.webhooks))
+	for _, wh := range m.webhooks {
+		result = append(result, wh)
+	}
+	return result, nil
+}
+
+// DeleteWebhook은 ID로 웹훅 엔드포인트를 삭제한다.
+func (m *MemoryStore) DeleteWebhook(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.webhooks, id)
+	return nil
+}
+
+// GetSlackWebhookURL은 마이그레이션 레거시 메서드로, 인메모리 저장소에는 레거시 데이터가 없으므로 ErrNotFound를 반환한다.
 func (m *MemoryStore) GetSlackWebhookURL(_ context.Context) (string, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.slackWebhook, nil
+	return "", ErrNotFound
 }
 
-// SetSlackWebhookURL은 Slack 웹훅 URL을 저장한다.
-func (m *MemoryStore) SetSlackWebhookURL(_ context.Context, url string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.slackWebhook = url
-	return nil
-}
-
-// DeleteSlackWebhookURL은 Slack 웹훅 URL을 삭제한다.
-func (m *MemoryStore) DeleteSlackWebhookURL(_ context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.slackWebhook = ""
-	return nil
-}
-
-// GetSlackChannel은 저장된 Slack 채널 이름을 반환한다.
+// GetSlackChannel은 마이그레이션 레거시 메서드로, 인메모리 저장소에는 레거시 데이터가 없으므로 ErrNotFound를 반환한다.
 func (m *MemoryStore) GetSlackChannel(_ context.Context) (string, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.slackChannel, nil
+	return "", ErrNotFound
 }
 
-// SetSlackChannel은 Slack 채널 이름을 저장한다.
-func (m *MemoryStore) SetSlackChannel(_ context.Context, channel string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.slackChannel = channel
+// DeleteSlackLegacy는 마이그레이션 레거시 메서드로, 인메모리 저장소에서는 아무 동작도 하지 않는다.
+func (m *MemoryStore) DeleteSlackLegacy(_ context.Context) error {
 	return nil
 }
 

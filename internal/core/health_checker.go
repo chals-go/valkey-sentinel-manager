@@ -233,14 +233,13 @@ func (hc *SentinelHealthChecker) sendDownAlert(groupName, nodeName, addr string)
 		return
 	}
 
-	webhookURL, _ := hc.store.GetSlackWebhookURL(ctx)
-	if webhookURL == "" {
-		return
-	}
-	channel, _ := hc.store.GetSlackChannel(ctx)
-
 	slog.Warn("sentinel node down, sending alert", "group", groupName, "node", nodeName, "addr", addr)
-	SendSentinelDownSlack(ctx, webhookURL, channel, nodeName, addr, groupName)
+	SendNotifications(ctx, hc.store, NotificationEvent{
+		EventType: "sentinel_down",
+		Name:      groupName,
+		Node:      nodeName + " (" + addr + ")",
+		Timestamp: time.Now(),
+	})
 }
 
 func (hc *SentinelHealthChecker) sendUpAlert(groupName, nodeName, addr string) {
@@ -254,12 +253,11 @@ func (hc *SentinelHealthChecker) sendUpAlert(groupName, nodeName, addr string) {
 		return
 	}
 
-	webhookURL, _ := hc.store.GetSlackWebhookURL(ctx)
-	if webhookURL == "" {
-		return
-	}
-	channel, _ := hc.store.GetSlackChannel(ctx)
-
 	slog.Info("sentinel node up, sending alert", "group", groupName, "node", nodeName, "addr", addr)
-	SendSentinelUpSlack(ctx, webhookURL, channel, nodeName, addr, groupName)
+	SendNotifications(ctx, hc.store, NotificationEvent{
+		EventType: "sentinel_up",
+		Name:      groupName,
+		Node:      nodeName + " (" + addr + ")",
+		Timestamp: time.Now(),
+	})
 }

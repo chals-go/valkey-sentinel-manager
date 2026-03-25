@@ -100,6 +100,32 @@ document.addEventListener('change', function(e) {
   if (e.target.closest('[data-toggle-r53-keys]')) { var fld = document.getElementById('modal-r53-key-fields'); if (fld) fld.style.display = e.target.checked ? '' : 'none'; return; }
   // Toggle edit azure auth (dns_edit page)
   if (e.target.closest('[data-toggle-edit-azure-auth]')) { if (typeof toggleEditAzureAuth === 'function') toggleEditAzureAuth(e.target.value); return; }
+  // Webhook type select
+  var whType = e.target.closest('[data-webhook-type-select]');
+  if (whType) {
+    var form = whType.closest('form');
+    if (!form) return;
+    var t = whType.value;
+    var urlField = form.querySelector('[data-wh-field="url"]');
+    var chField = form.querySelector('[data-wh-field="channel"]');
+    var kwField = form.querySelector('[data-wh-field="kakaowork"]');
+    var custField = form.querySelector('[data-wh-field="custom"]');
+    if (urlField) { urlField.classList.toggle('hidden', t === 'kakaowork'); }
+    if (chField) { chField.classList.toggle('hidden', t !== 'slack'); }
+    if (kwField) { kwField.classList.toggle('hidden', t !== 'kakaowork'); }
+    if (custField) { custField.classList.toggle('hidden', t !== 'custom'); }
+    return;
+  }
+  // Payload mode radio
+  var pmRadio = e.target.closest('[data-payload-mode]');
+  if (pmRadio) {
+    var frm = pmRadio.closest('form');
+    if (frm) {
+      var bk = frm.querySelector('[data-wh-field="body_key"]');
+      if (bk) bk.classList.toggle('hidden', pmRadio.value === 'json');
+    }
+    return;
+  }
   // Skip DNS toggle
   var skipDns = e.target.closest('[data-toggle-skip-dns]');
   if (skipDns) {

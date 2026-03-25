@@ -70,18 +70,25 @@ type Store interface {
 	// DeleteAPIToken은 API 토큰을 삭제한다.
 	DeleteAPIToken(ctx context.Context) error
 
-	// Slack
+	// Webhook (Notification)
 
-	// GetSlackWebhookURL은 저장된 Slack 웹훅 URL을 반환한다.
+	// SaveWebhook은 웹훅 엔드포인트를 저장한다.
+	SaveWebhook(ctx context.Context, wh *models.WebhookEndpoint) error
+	// GetWebhook은 지정된 ID의 웹훅을 반환한다.
+	GetWebhook(ctx context.Context, id string) (*models.WebhookEndpoint, error)
+	// ListWebhooks는 등록된 모든 웹훅 목록을 반환한다.
+	ListWebhooks(ctx context.Context) ([]*models.WebhookEndpoint, error)
+	// DeleteWebhook은 지정된 ID의 웹훅을 삭제한다.
+	DeleteWebhook(ctx context.Context, id string) error
+
+	// Slack 마이그레이션용 (deprecated, 시작 시 마이그레이션 후 삭제)
+
+	// GetSlackWebhookURL은 기존 Slack 웹훅 URL을 반환한다 (마이그레이션 전용).
 	GetSlackWebhookURL(ctx context.Context) (string, error)
-	// SetSlackWebhookURL은 Slack 웹훅 URL을 저장한다.
-	SetSlackWebhookURL(ctx context.Context, url string) error
-	// DeleteSlackWebhookURL은 Slack 웹훅 URL을 삭제한다.
-	DeleteSlackWebhookURL(ctx context.Context) error
-	// GetSlackChannel은 저장된 Slack 채널 이름을 반환한다.
+	// GetSlackChannel은 기존 Slack 채널을 반환한다 (마이그레이션 전용).
 	GetSlackChannel(ctx context.Context) (string, error)
-	// SetSlackChannel은 Slack 채널 이름을 저장한다.
-	SetSlackChannel(ctx context.Context, channel string) error
+	// DeleteSlackLegacy는 기존 Slack 설정 키를 삭제한다 (마이그레이션 전용).
+	DeleteSlackLegacy(ctx context.Context) error
 
 	// 런타임 설정
 
