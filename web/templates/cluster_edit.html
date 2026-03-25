@@ -95,7 +95,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "dns_provider" }}</label>
-            <select id="dns_provider" name="dns_provider" data-dns-preview class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+            <select id="dns_provider" name="dns_provider" data-edit-dns-preview="{{ .Data.Cluster.MasterName }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
               <option value="">{{ t "select" }}</option>
               {{ range $name, $zone := .Data.DNSProviders }}
               <option value="{{ $name }}" data-zone="{{ $zone }}">{{ $name }} ({{ $zone }})</option>
@@ -108,15 +108,15 @@
           </div>
         </div>
         <div class="mb-4">
-          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "dns_record" }}</label>
-          <div class="flex items-center gap-1">
-            <input type="text" id="primary_record" name="primary_record" value="primary-{{ .Data.Cluster.MasterName }}" class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm" data-dns-preview>
-            <span id="dns-zone-suffix" class="font-mono text-sm text-slate-400">.</span>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "primary_dns_auto" }}</label>
+          <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <div class="font-mono text-sm text-slate-600">Primary: <strong data-preview-primary="{{ .Data.Cluster.MasterName }}">primary-{{ .Data.Cluster.MasterName }}</strong></div>
+            <div data-preview-replica-row="{{ .Data.Cluster.MasterName }}" class="font-mono text-sm text-slate-600 mt-1 hidden">Replica: <span data-preview-replica="{{ .Data.Cluster.MasterName }}">replica-{{ .Data.Cluster.MasterName }}</span></div>
           </div>
         </div>
         <div>
           <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" name="create_replica_dns" class="w-4 h-4 accent-indigo-600 rounded">
+            <input type="checkbox" name="create_replica_dns" data-edit-replica-toggle="{{ .Data.Cluster.MasterName }}" class="w-4 h-4 accent-indigo-600 rounded">
             <span class="text-sm text-slate-700">{{ t "create_replica_dns" }}</span>
           </label>
           <p class="text-xs text-slate-400 mt-1 ml-6">{{ t "create_replica_dns_desc" }}</p>

@@ -62,9 +62,30 @@ document.addEventListener('change', function(e) {
   if (e.target.closest('[data-refresh-interval]')) { setRefreshInterval(parseInt(e.target.value)); return; }
   // DNS preview (new cluster modal)
   if (e.target.closest('[data-dns-preview-new]')) { if (typeof updateNewDnsPreview === 'function') updateNewDnsPreview(); return; }
-  // DNS preview (edit page)
+  // DNS preview (edit page — existing DNS)
   if (e.target.closest('[data-dns-preview]')) { if (typeof updateDnsPreview === 'function') updateDnsPreview(); return; }
-  // Toggle replica preview
+  // DNS preview (add DNS endpoint — edit modal/page)
+  var editPrev = e.target.closest('[data-edit-dns-preview]');
+  if (editPrev) {
+    var mn = editPrev.getAttribute('data-edit-dns-preview');
+    var opt = editPrev.options[editPrev.selectedIndex];
+    var z = opt ? opt.getAttribute('data-zone') || '' : '';
+    var sfx = z ? '.' + z : '';
+    var pp = document.querySelector('[data-preview-primary="' + mn + '"]');
+    var pr = document.querySelector('[data-preview-replica="' + mn + '"]');
+    if (pp) pp.textContent = 'primary-' + mn + sfx;
+    if (pr) pr.textContent = 'replica-' + mn + sfx;
+    return;
+  }
+  // Toggle replica preview (add DNS endpoint)
+  var editRepToggle = e.target.closest('[data-edit-replica-toggle]');
+  if (editRepToggle) {
+    var mn2 = editRepToggle.getAttribute('data-edit-replica-toggle');
+    var row = document.querySelector('[data-preview-replica-row="' + mn2 + '"]');
+    if (row) row.classList.toggle('hidden', !editRepToggle.checked);
+    return;
+  }
+  // Toggle replica preview (register modal)
   if (e.target.closest('[data-toggle-replica]')) { if (typeof toggleReplicaPreview === 'function') toggleReplicaPreview(); return; }
   // Sentinel inputs count
   if (e.target.closest('[data-sentinel-inputs]')) { if (typeof updateModalSentinelInputs === 'function') updateModalSentinelInputs(); return; }
