@@ -79,6 +79,23 @@ document.addEventListener('change', function(e) {
   if (e.target.closest('[data-toggle-r53-keys]')) { var fld = document.getElementById('modal-r53-key-fields'); if (fld) fld.style.display = e.target.checked ? '' : 'none'; return; }
   // Toggle edit azure auth (dns_edit page)
   if (e.target.closest('[data-toggle-edit-azure-auth]')) { if (typeof toggleEditAzureAuth === 'function') toggleEditAzureAuth(e.target.value); return; }
+  // Skip DNS toggle
+  var skipDns = e.target.closest('[data-toggle-skip-dns]');
+  if (skipDns) {
+    var off = skipDns.checked;
+    var form = skipDns.closest('form');
+    var provider = form.querySelector('[name="dns_provider"]');
+    var ttl = form.querySelector('[name="dns_ttl"]');
+    var replicaDns = form.querySelector('[name="create_replica_dns"]');
+    var preview = form.querySelector('[data-dns-preview-area]');
+    [provider, ttl].forEach(function(el) {
+      if (el) { el.disabled = off; el.classList.toggle('opacity-50', off); el.classList.toggle('bg-gray-100', off); }
+    });
+    if (replicaDns) { replicaDns.disabled = off; replicaDns.closest('label').classList.toggle('opacity-50', off); }
+    if (preview) { preview.classList.toggle('hidden', off); }
+    if (provider) { provider.required = !off; }
+    return;
+  }
 });
 
 // Input delegation: DNS preview

@@ -308,6 +308,32 @@ func (h *AdminHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 // === Clusters ===
 
 // Clusters는 등록된 Replication Group 목록 페이지를 렌더링한다.
+// clustersPageData는 클러스터 목록 페이지에 필요한 데이터를 조회하여 반환한다.
+func (h *AdminHandler) clustersPageData(ctx context.Context) map[string]any {
+	clusters, _ := h.store.ListClusters(ctx)
+	sentinels, _ := h.store.ListSentinels(ctx, "")
+	sentinelClusterNames := make(map[string]bool)
+	for _, s := range sentinels {
+		sentinelClusterNames[s.GroupName] = true
+	}
+	dnsConfigs, _ := h.store.ListDNSProviderConfigs(ctx)
+	dnsProvidersWithZone := make(map[string]string)
+	for name, cfg := range dnsConfigs {
+		dnsProvidersWithZone[name] = cfg["zone_name"]
+	}
+	return map[string]any{
+		"Clusters":             clusters,
+		"SentinelClusterNames": sortedKeys(sentinelClusterNames),
+		"DNSProviders":         dnsProvidersWithZone,
+		"LiveInfo":             map[string]*core.MasterDetail{},
+		"SentinelsByGroup":     map[string][]*models.Sentinel{},
+		"DNSRecords":           map[string]map[string][]string{},
+		"SentinelPingResults":  h.healthCheck.GetAllStatuses(),
+		"ClusterPage":          1,
+		"ClusterTotalPages":    1,
+	}
+}
+
 func (h *AdminHandler) Clusters(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	clusters, storeErr := h.store.ListClusters(ctx)
@@ -495,9 +521,15 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	quorumMode := r.FormValue("quorum_mode") == "on" || r.FormValue("quorum_mode") == "true"
 	createReplicaDNS := r.FormValue("create_replica_dns") == "on" || r.FormValue("create_replica_dns") == "true"
 
+	skipDNS := r.FormValue("skip_dns") == "on"
+
 	// Check duplicate.
 	if _, err := h.store.GetCluster(ctx, monitoringName); err == nil {
-		h.redirect(w, r, "/admin/clusters")
+		t := NewTranslator(h.lang)
+		h.render(w, r, "base", PageData{
+			Page: "clusters", FlashMessage: t("flash_duplicate_cluster") + ": " + monitoringName, FlashType: "error",
+			Data: h.clustersPageData(ctx),
+		})
 		return
 	}
 
@@ -510,15 +542,19 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 		sentinelAddrs = append(sentinelAddrs, fmt.Sprintf("%s:%d", s.Host, s.Port))
 	}
 
-	// Get zone_name from DNS provider config.
-	dnsCfg, storeErr := h.store.GetDNSProviderConfig(ctx, dnsProvider)
-	if storeErr != nil { slog.Warn("store error", "method", "GetDNSProviderConfig", "error", storeErr) }
-	zoneName := ""
-	if dnsCfg != nil {
-		zoneName = dnsCfg["zone_name"]
+	var primaryDNS models.DNSMapping
+	if !skipDNS {
+		// Get zone_name from DNS provider config.
+		dnsCfg, storeErr := h.store.GetDNSProviderConfig(ctx, dnsProvider)
+		if storeErr != nil { slog.Warn("store error", "method", "GetDNSProviderConfig", "error", storeErr) }
+		zoneName := ""
+		if dnsCfg != nil {
+			zoneName = dnsCfg["zone_name"]
+		}
+		primaryDNS = models.DNSMapping{Zone: zoneName, RecordName: fmt.Sprintf("primary-%s", monitoringName), RecordType: "A", TTL: dnsTTL}
+	} else {
+		dnsProvider = ""
 	}
-
-	primaryDNS := models.DNSMapping{Zone: zoneName, RecordName: fmt.Sprintf("primary-%s", monitoringName), RecordType: "A", TTL: dnsTTL}
 
 	cluster := &models.Cluster{
 		GroupName:        sentinelCluster,
