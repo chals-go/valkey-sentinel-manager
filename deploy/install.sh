@@ -23,59 +23,57 @@ error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
 # ---------- Help / Usage ----------
 show_help() {
-    cat <<HELP
-
-${BOLD}Valkey Sentinel Manager — Installer${NC}
-
-${BOLD}USAGE${NC}
-    sudo bash deploy/install.sh <component> [options]
-
-${BOLD}COMPONENTS${NC}
-    ${CYAN}sentinel-manager${NC}   Web UI + REST API server for managing Valkey Sentinel DNS failover.
-                       Runs as a systemd service.
-
-    ${CYAN}sentinel-agent${NC}     CLI tool called by Valkey Sentinel via notification-script and
-                       client-reconfig-script. Installed with Valkey user permissions.
-
-    ${CYAN}all${NC}                Install both sentinel-manager and sentinel-agent.
-
-${BOLD}OPTIONS${NC}
-    -h, --help         Show this help message
-
-${BOLD}EXAMPLES${NC}
-    ${DIM}# Install sentinel-manager only${NC}
-    sudo bash deploy/install.sh sentinel-manager
-
-    ${DIM}# Install sentinel-agent only${NC}
-    sudo bash deploy/install.sh sentinel-agent
-
-    ${DIM}# Install both${NC}
-    sudo bash deploy/install.sh all
-
-${BOLD}WHAT GETS INSTALLED${NC}
-
-  ${CYAN}sentinel-manager:${NC}
-    Binary      ${DIM}→${NC}  /usr/local/bin/sentinel-manager             ${DIM}(755, sentinel-manager:sentinel-manager)${NC}
-    Config      ${DIM}→${NC}  /etc/sentinel-manager/config.yaml           ${DIM}(600, sentinel-manager:sentinel-manager)${NC}
-    Logs        ${DIM}→${NC}  /var/log/sentinel-manager/                  ${DIM}(sentinel-manager:sentinel-manager)${NC}
-    Service     ${DIM}→${NC}  /etc/systemd/system/sentinel-manager.service
-    User        ${DIM}→${NC}  sentinel-manager (system user, no login)
-
-  ${CYAN}sentinel-agent:${NC}
-    Binary      ${DIM}→${NC}  /usr/local/bin/sentinel-agent               ${DIM}(755, <valkey-user>:<valkey-group>)${NC}
-    Symlinks    ${DIM}→${NC}  /usr/local/bin/sentinel-agent-reconfig      ${DIM}→ sentinel-agent${NC}
-                   /usr/local/bin/sentinel-agent-notify        ${DIM}→ sentinel-agent${NC}
-    Config      ${DIM}→${NC}  /etc/valkey/sentinel-agent.yaml             ${DIM}(640, <valkey-user>:<valkey-group>)${NC}
-
-    ${DIM}* <valkey-user> is auto-detected from running valkey-sentinel/valkey-server process,
-      binary ownership, or system user (valkey → redis → nobody fallback).${NC}
-
-${BOLD}PREREQUISITES${NC}
-    • Root privileges (sudo)
-    • Go 1.24+ (for building) or pre-built binaries in bin/
-    • make (for build targets)
-
-HELP
+    echo ""
+    echo -e "${BOLD}Valkey Sentinel Manager — Installer${NC}"
+    echo ""
+    echo -e "${BOLD}USAGE${NC}"
+    echo "    sudo bash deploy/install.sh <component> [options]"
+    echo ""
+    echo -e "${BOLD}COMPONENTS${NC}"
+    echo -e "    ${CYAN}sentinel-manager${NC}   Web UI + REST API server for managing Valkey Sentinel DNS failover."
+    echo "                       Runs as a systemd service."
+    echo ""
+    echo -e "    ${CYAN}sentinel-agent${NC}     CLI tool called by Valkey Sentinel via notification-script and"
+    echo "                       client-reconfig-script. Installed with Valkey user permissions."
+    echo ""
+    echo -e "    ${CYAN}all${NC}                Install both components."
+    echo ""
+    echo -e "${BOLD}OPTIONS${NC}"
+    echo "    -h, --help         Show this help message"
+    echo ""
+    echo -e "${BOLD}EXAMPLES${NC}"
+    echo -e "    ${DIM}# Install sentinel-manager only${NC}"
+    echo "    sudo bash deploy/install.sh sentinel-manager"
+    echo ""
+    echo -e "    ${DIM}# Install sentinel-agent only${NC}"
+    echo "    sudo bash deploy/install.sh sentinel-agent"
+    echo ""
+    echo -e "    ${DIM}# Install both${NC}"
+    echo "    sudo bash deploy/install.sh all"
+    echo ""
+    echo -e "${BOLD}WHAT GETS INSTALLED${NC}"
+    echo ""
+    echo -e "  ${CYAN}sentinel-manager:${NC}"
+    echo -e "    Binary      ${DIM}→${NC}  /usr/local/bin/sentinel-manager             ${DIM}(755, sentinel-manager:sentinel-manager)${NC}"
+    echo -e "    Config      ${DIM}→${NC}  /etc/sentinel-manager/config.yaml           ${DIM}(600, sentinel-manager:sentinel-manager)${NC}"
+    echo -e "    Logs        ${DIM}→${NC}  /var/log/sentinel-manager/                  ${DIM}(sentinel-manager:sentinel-manager)${NC}"
+    echo -e "    Service     ${DIM}→${NC}  /etc/systemd/system/sentinel-manager.service"
+    echo -e "    User        ${DIM}→${NC}  sentinel-manager (system user, no login)"
+    echo ""
+    echo -e "  ${CYAN}sentinel-agent:${NC}"
+    echo -e "    Binary      ${DIM}→${NC}  /usr/local/bin/sentinel-agent               ${DIM}(755, <valkey-user>:<valkey-group>)${NC}"
+    echo -e "    Symlinks    ${DIM}→${NC}  /usr/local/bin/sentinel-agent-reconfig      ${DIM}→ sentinel-agent${NC}"
+    echo -e "                   /usr/local/bin/sentinel-agent-notify        ${DIM}→ sentinel-agent${NC}"
+    echo -e "    Config      ${DIM}→${NC}  /etc/valkey/sentinel-agent.yaml             ${DIM}(640, <valkey-user>:<valkey-group>)${NC}"
+    echo ""
+    echo -e "    ${DIM}* <valkey-user> is auto-detected from running valkey-sentinel/valkey-server process,${NC}"
+    echo -e "    ${DIM}  binary ownership, or system user (valkey → redis → nobody fallback).${NC}"
+    echo ""
+    echo -e "${BOLD}PREREQUISITES${NC}"
+    echo "    • Root privileges (sudo)"
+    echo "    • Go 1.24+ (for building) or pre-built binaries in bin/"
+    echo "    • make (for build targets)"
+    echo ""
     exit 0
 }
 
