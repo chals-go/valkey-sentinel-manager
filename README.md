@@ -462,6 +462,22 @@ make run            # Dev run (memory store) / 개발 실행
 make docker-build   # Docker image
 ```
 
+---
+
+## Pro Tip / 꿀팁
+
+> **Just use Valkey Cluster mode.** It handles everything — automatic sharding, failover, rebalancing — no DNS, no Sentinel, no Manager needed. Problem solved.
+>
+> **그냥 Valkey Cluster 모드 쓰세요.** 자동 샤딩, 페일오버, 리밸런싱 다 해줍니다. DNS도 필요 없고, Sentinel도 필요 없고, 이 Manager도 필요 없습니다. 모든 게 해결됩니다.
+
+---
+
+## Built with Claude Code
+
+This entire project was built using [Claude Code](https://claude.ai/claude-code). If you have questions about the codebase, architecture, or how anything works — just ask Claude Code.
+
+이 프로젝트는 [Claude Code](https://claude.ai/claude-code)로 만들었습니다. 코드, 아키텍처, 동작 방식에 대해 궁금한 점이 있으면 Claude Code에게 물어보세요.
+
 ## License
 
-Private repository
+MIT License — Free to use, modify, and distribute.
