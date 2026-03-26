@@ -150,7 +150,7 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /admin/webhook/{id}/test", protect(http.HandlerFunc(h.WebhookTest)))
 	mux.Handle("POST /admin/webhook/{id}/toggle", protect(http.HandlerFunc(h.WebhookToggle)))
 	mux.Handle("GET /admin/settings/account", protect(http.HandlerFunc(h.SettingsAccount)))
-	mux.Handle("POST /admin/settings/account", protect(http.HandlerFunc(h.SettingsAccountSubmit)))
+	mux.Handle("POST /admin/settings/account", protect(http.HandlerFunc(h.SettingsAccountSave)))
 }
 
 // === Login / Logout ===
@@ -1759,8 +1759,8 @@ func (h *AdminHandler) SettingsAccount(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// SettingsAccountSubmit은 관리자 비밀번호 변경 요청을 처리한다. 현재 비밀번호 검증 후 새 비밀번호를 저장한다.
-func (h *AdminHandler) SettingsAccountSubmit(w http.ResponseWriter, r *http.Request) {
+// SettingsAccountSave은 관리자 비밀번호 변경 요청을 처리한다. 현재 비밀번호 검증 후 새 비밀번호를 저장한다.
+func (h *AdminHandler) SettingsAccountSave(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "invalid form data", http.StatusBadRequest)
 		return
