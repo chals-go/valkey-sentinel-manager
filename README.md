@@ -2,16 +2,11 @@
 
 **Valkey Sentinel DNS Failover Automation System**
 
-Valkey Sentinel 환경에서 primary/replica 장애 발생 시 DNS 레코드를 자동 갱신하고, 웹 UI로 Sentinel 클러스터를 통합 관리하는 시스템.
-
-> A web-based management system for Valkey Sentinel that automatically updates DNS records on failover and provides a unified admin UI for monitoring and managing Sentinel clusters.
-
-**Go 단일 바이너리** — HTML/CSS/JS/폰트 모두 내장. 별도 파일 배포 불필요.
-Sentinel 모드 전용. Cluster 모드는 지원하지 않음.
+[English](#english) | [한국어](#한국어)
 
 ---
 
-## Architecture / 시스템 구성도
+## Architecture
 
 ```mermaid
 graph TD
@@ -55,33 +50,42 @@ graph TD
     style P fill:#3b82f6,color:#fff
 ```
 
-## Components / 구성 요소
+---
 
-| Component | Description | Deploy |
-|-----------|-------------|--------|
-| **sentinel-manager** | Web UI + REST API. 이벤트 수신, DNS 업데이트, 알림, 관리 | 별도 서버 (1대 이상) |
-| **sentinel-agent** | Sentinel 스크립트 CLI. 페일오버/장애 감지 시 Manager로 이벤트 전송 | 각 Sentinel 노드 |
-| **Storage Valkey** | Manager 설정, 이벤트, 분산 락 저장소 | Sentinel HA 권장 |
+# English
 
-## Features / 주요 기능
+A web-based management system for Valkey Sentinel that automatically updates DNS records on failover and provides a unified admin UI for monitoring and managing Sentinel clusters.
 
-- **DNS 기반 엔드포인트** — `primary-{name}.zone`, `replica-{name}.zone` 자동 생성/갱신
-- **멀티 클라우드 DNS** — AWS Route53, Azure DNS, BIND 지원
-- **DNS 없이 사용 가능** — Sentinel 모니터링 + 알림만 사용
-- **자동 페일오버 처리** — Sentinel 감지 → 쿼럼 판단 → DNS 갱신 → CLIENT KILL → 알림
-- **CLIENT KILL** — 페일오버 후 구 primary의 기존 클라이언트 커넥션 강제 종료
-- **다중 Webhook 알림** — Slack, Discord, Teams, 카카오워크, Custom HTTP
-- **Sentinel 헬스체크** — 백그라운드 모니터링, 노드 다운/복구 자동 감지 + 알림
-- **Load Sentinels** — Sentinel에서 모니터링 중인 마스터 일괄 등록
-- **ACL 인증** — Valkey 7+ ACL (username + password) 지원
-- **분산 락 + 쿼럼** — 다중 Manager 인스턴스 안전하게 운영
-- **암호화 저장** — AES-256-GCM으로 민감 데이터 암호화
-- **다국어** — 영어 / 한국어
-- **단일 바이너리** — embed.FS로 모든 정적 파일 내장
+**Single Go binary** — all HTML/CSS/JS/fonts embedded. No extra file deployment needed.
+Sentinel mode only. Cluster mode is not supported.
 
-## Failover Workflow / 페일오버 동작 흐름
+## Components
 
-### DNS 사용 시
+| Component | Description | Deploy To |
+|-----------|-------------|-----------|
+| **sentinel-manager** | Web UI + REST API server. Receives events, updates DNS, sends notifications | Dedicated server (1+) |
+| **sentinel-agent** | CLI tool called by Sentinel scripts. Sends failover/down/up events to Manager | Each Sentinel node |
+| **Storage Valkey** | Shared storage for config, events, distributed locks | Sentinel HA recommended |
+
+## Features
+
+- **DNS-based endpoints** — Auto-create/update `primary-{name}.zone` and `replica-{name}.zone`
+- **Multi-cloud DNS** — AWS Route53, Azure DNS, BIND support
+- **DNS-free mode** — Use only Sentinel monitoring + notifications without DNS
+- **Auto failover handling** — Sentinel detection → Quorum check → DNS update → CLIENT KILL → Notification
+- **CLIENT KILL** — Force-close existing client connections on old primary after failover
+- **Multi-webhook notifications** — Slack, Discord, Microsoft Teams, Kakao Work, Custom HTTP
+- **Sentinel health check** — Background monitoring with automatic down/up detection and alerting
+- **Load Sentinels** — Bulk import monitored masters from Sentinel cluster
+- **ACL authentication** — Valkey 7+ ACL (username + password) support
+- **Distributed lock + Quorum** — Safe multi-instance Manager deployment
+- **Encrypted storage** — AES-256-GCM encryption for sensitive data in Valkey
+- **Bilingual** — English / Korean
+- **Single binary** — All static files embedded via embed.FS
+
+## Failover Workflow
+
+### With DNS
 
 ```mermaid
 sequenceDiagram
@@ -93,19 +97,19 @@ sequenceDiagram
     participant W as Webhooks
 
     P->>P: Primary Down
-    S->>S: Failover 감지 + 실행
-    S->>A: client-reconfig-script 호출
+    S->>S: Detect failover + promote replica
+    S->>A: client-reconfig-script called
     A->>M: POST /api/v1/events (failover)
 
-    Note over M: 쿼럼 체크 (N개 Sentinel 보고 대기)
+    Note over M: Quorum check (wait for N sentinel reports)
 
-    M->>D: Primary DNS → 새 Primary IP
-    M->>D: Replica DNS → Slave IP 목록 갱신
-    M->>P: CLIENT KILL TYPE normal (비동기, 구 Primary)
-    M->>W: 알림 전송 (모든 활성 Webhook)
+    M->>D: Primary DNS → New Primary IP
+    M->>D: Replica DNS → Update slave IP list
+    M->>P: CLIENT KILL TYPE normal (async, old primary)
+    M->>W: Send notifications (all enabled webhooks)
 ```
 
-### DNS 미사용 시
+### Without DNS
 
 ```mermaid
 sequenceDiagram
@@ -114,28 +118,28 @@ sequenceDiagram
     participant M as Sentinel Manager
     participant W as Webhooks
 
-    S->>A: client-reconfig-script 호출
+    S->>A: client-reconfig-script called
     A->>M: POST /api/v1/events (failover)
 
-    Note over M: 쿼럼 체크
-    Note over M: DNS disabled → DNS/CLIENT KILL 스킵
+    Note over M: Quorum check
+    Note over M: DNS disabled → Skip DNS/CLIENT KILL
 
-    M->>W: 알림 전송 (모든 활성 Webhook)
+    M->>W: Send notifications (all enabled webhooks)
 ```
 
-## Event Types / 이벤트 유형
+## Event Types
 
 | Event | Trigger | DNS Action | Notification |
 |-------|---------|------------|-------------|
-| **Primary Failover** | Primary 다운 → Sentinel 페일오버 | Primary DNS → 새 IP, Replica DNS 갱신 | Yes |
-| **Replica Down** | Replica 노드 다운 | Replica DNS에서 해당 IP 제거 | Yes |
-| **Replica Up** | Replica 노드 복구 | Replica DNS에 해당 IP 추가 | Yes |
-| **Sentinel Down** | Sentinel 노드 핑 실패 | — | Yes (알림 활성 시) |
-| **Sentinel Up** | Sentinel 노드 핑 복구 | — | Yes (알림 활성 시) |
+| **Primary Failover** | Primary down → Sentinel failover | Primary DNS → new IP, Replica DNS update | Yes |
+| **Replica Down** | Replica node down | Remove IP from Replica DNS | Yes |
+| **Replica Up** | Replica node recovered | Add IP to Replica DNS | Yes |
+| **Sentinel Down** | Sentinel node ping failure | — | Yes (if alert enabled) |
+| **Sentinel Up** | Sentinel node ping recovered | — | Yes (if alert enabled) |
 
-## Quick Start / 빠른 시작
+## Quick Start
 
-### Build / 빌드
+### Build
 
 ```bash
 git clone https://github.com/chals-go/valkey-sentinel-manager.git
@@ -144,20 +148,15 @@ make build
 # → bin/sentinel-manager, bin/sentinel-agent
 ```
 
-### Install / 설치
+### Install
 
 ```bash
-# Manager 설치
-sudo bash deploy/install.sh sentinel-manager
-
-# Agent 설치 (각 Sentinel 노드)
-sudo bash deploy/install.sh sentinel-agent
-
-# 둘 다 설치
-sudo bash deploy/install.sh all
+sudo bash deploy/install.sh sentinel-manager   # Manager only
+sudo bash deploy/install.sh sentinel-agent      # Agent only
+sudo bash deploy/install.sh all                 # Both
 ```
 
-### Configure / 설정
+### Configure
 
 **Manager** (`/etc/sentinel-manager/config.yaml`):
 ```yaml
@@ -182,14 +181,14 @@ sentinel client-reconfig-script mymaster /usr/local/bin/sentinel-agent-reconfig
 sentinel notification-script mymaster /usr/local/bin/sentinel-agent-notify
 ```
 
-### Start / 시작
+### Start
 
 ```bash
 sudo systemctl start sentinel-manager
 # → http://<server>:8000/admin/ (admin / admin)
 ```
 
-## Supported Platforms / 지원 환경
+## Supported Platforms
 
 | Category | Supported |
 |----------|-----------|
@@ -202,30 +201,26 @@ sudo systemctl start sentinel-manager
 
 ## API
 
-Bearer 토큰 인증. 웹 UI → Settings → API Token에서 발급.
+Bearer token authentication. Generate tokens from Web UI → Settings → API Token.
 
-```bash
-# Health check (no auth)
-GET /api/v1/health
+```
+GET  /api/v1/health              # Health check (no auth)
 
-# Clusters
-GET    /api/v1/clusters
-POST   /api/v1/clusters
-GET    /api/v1/clusters/{name}
-DELETE /api/v1/clusters/{name}
+GET    /api/v1/clusters          # List clusters
+POST   /api/v1/clusters          # Create cluster
+GET    /api/v1/clusters/{name}   # Get cluster
+DELETE /api/v1/clusters/{name}   # Delete cluster
 
-# Sentinels
-GET    /api/v1/sentinels
-POST   /api/v1/sentinels
-GET    /api/v1/sentinels/{name}
-DELETE /api/v1/sentinels/{name}
+GET    /api/v1/sentinels         # List sentinels
+POST   /api/v1/sentinels         # Create sentinel
+GET    /api/v1/sentinels/{name}  # Get sentinel
+DELETE /api/v1/sentinels/{name}  # Delete sentinel
 
-# Events
-GET    /api/v1/events
-POST   /api/v1/events
+GET    /api/v1/events            # List events
+POST   /api/v1/events            # Create event (called by agent)
 ```
 
-## Tech Stack / 기술 스택
+## Tech Stack
 
 | Area | Technology |
 |------|-----------|
@@ -237,30 +232,214 @@ POST   /api/v1/events
 | Security | AES-256-GCM, CSRF, Bearer token, brute-force defense |
 | UI | Tailwind CSS, Plus Jakarta Sans (local woff2) |
 
+---
+
+# 한국어
+
+Valkey Sentinel 환경에서 primary/replica 장애 발생 시 DNS 레코드를 자동 갱신하고, 웹 UI로 Sentinel 클러스터를 통합 관리하는 시스템.
+
+**Go 단일 바이너리** — HTML/CSS/JS/폰트 모두 내장. 별도 파일 배포 불필요.
+Sentinel 모드 전용. Cluster 모드는 지원하지 않음.
+
+## 구성 요소
+
+| 구성 요소 | 설명 | 배포 위치 |
+|-----------|------|----------|
+| **sentinel-manager** | 웹 UI + REST API 서버. 이벤트 수신, DNS 업데이트, 알림 전송, 관리 | 별도 서버 (1대 이상) |
+| **sentinel-agent** | Sentinel 스크립트 CLI. 페일오버/장애 감지 시 Manager로 이벤트 전송 | 각 Sentinel 노드 |
+| **Storage Valkey** | Manager 설정, 이벤트, 분산 락 저장소 | Sentinel HA 구성 권장 |
+
+## 주요 기능
+
+- **DNS 기반 엔드포인트** — `primary-{name}.zone`, `replica-{name}.zone` 자동 생성/갱신
+- **멀티 클라우드 DNS** — AWS Route53, Azure DNS, BIND 지원
+- **DNS 없이 사용 가능** — Sentinel 모니터링 + 알림만 사용
+- **자동 페일오버 처리** — Sentinel 감지 → 쿼럼 판단 → DNS 갱신 → CLIENT KILL → 알림
+- **CLIENT KILL** — 페일오버 후 구 primary의 기존 클라이언트 커넥션 강제 종료
+- **다중 Webhook 알림** — Slack, Discord, Teams, 카카오워크, Custom HTTP
+- **Sentinel 헬스체크** — 백그라운드 모니터링, 노드 다운/복구 자동 감지 + 알림
+- **Load Sentinels** — Sentinel에서 모니터링 중인 마스터 일괄 등록
+- **ACL 인증** — Valkey 7+ ACL (username + password) 지원
+- **분산 락 + 쿼럼** — 다중 Manager 인스턴스 안전하게 운영
+- **암호화 저장** — AES-256-GCM으로 민감 데이터 암호화
+- **다국어** — 영어 / 한국어
+- **단일 바이너리** — embed.FS로 모든 정적 파일 내장
+
+## 페일오버 동작 흐름
+
+### DNS 사용 시
+
+```mermaid
+sequenceDiagram
+    participant P as Primary (다운)
+    participant S as Sentinel
+    participant A as sentinel-agent
+    participant M as Sentinel Manager
+    participant D as DNS Provider
+    participant W as Webhooks
+
+    P->>P: Primary 다운
+    S->>S: 페일오버 감지 + Replica 승격
+    S->>A: client-reconfig-script 호출
+    A->>M: POST /api/v1/events (failover)
+
+    Note over M: 쿼럼 체크 (N개 Sentinel 보고 대기)
+
+    M->>D: Primary DNS → 새 Primary IP
+    M->>D: Replica DNS → Slave IP 목록 갱신
+    M->>P: CLIENT KILL TYPE normal (비동기, 구 Primary)
+    M->>W: 알림 전송 (모든 활성 Webhook)
+```
+
+### DNS 미사용 시
+
+```mermaid
+sequenceDiagram
+    participant S as Sentinel
+    participant A as sentinel-agent
+    participant M as Sentinel Manager
+    participant W as Webhooks
+
+    S->>A: client-reconfig-script 호출
+    A->>M: POST /api/v1/events (failover)
+
+    Note over M: 쿼럼 체크
+    Note over M: DNS 비활성 → DNS/CLIENT KILL 스킵
+
+    M->>W: 알림 전송 (모든 활성 Webhook)
+```
+
+## 이벤트 유형
+
+| 이벤트 | 발생 조건 | DNS 동작 | 알림 |
+|--------|----------|----------|------|
+| **Primary Failover** | Primary 다운 → Sentinel 페일오버 | Primary DNS → 새 IP, Replica DNS 갱신 | O |
+| **Replica Down** | Replica 노드 다운 | Replica DNS에서 해당 IP 제거 | O |
+| **Replica Up** | Replica 노드 복구 | Replica DNS에 해당 IP 추가 | O |
+| **Sentinel Down** | Sentinel 노드 핑 실패 | — | O (알림 활성 시) |
+| **Sentinel Up** | Sentinel 노드 핑 복구 | — | O (알림 활성 시) |
+
+## 빠른 시작
+
+### 빌드
+
+```bash
+git clone https://github.com/chals-go/valkey-sentinel-manager.git
+cd valkey-sentinel-manager
+make build
+# → bin/sentinel-manager, bin/sentinel-agent
+```
+
+### 설치
+
+```bash
+sudo bash deploy/install.sh sentinel-manager   # Manager만
+sudo bash deploy/install.sh sentinel-agent      # Agent만
+sudo bash deploy/install.sh all                 # 둘 다
+```
+
+### 설정
+
+**Manager** (`/etc/sentinel-manager/config.yaml`):
+```yaml
+host: "0.0.0.0"
+port: 8000
+store_type: "valkey"
+store_sentinels: "10.0.0.1:26379,10.0.0.2:26379,10.0.0.3:26379"
+store_sentinel_master: "smgr-store"
+```
+
+**Agent** (`/etc/valkey/sentinel-agent.yaml`):
+```yaml
+monitor_url: "http://sentinel-manager:8000"
+api_key: "smgr_xxxx"
+sentinel_node_name: "sentinel-01"
+group_name: "my-cluster"
+```
+
+**Sentinel** (`sentinel.conf`):
+```conf
+sentinel client-reconfig-script mymaster /usr/local/bin/sentinel-agent-reconfig
+sentinel notification-script mymaster /usr/local/bin/sentinel-agent-notify
+```
+
+### 시작
+
+```bash
+sudo systemctl start sentinel-manager
+# → http://<서버>:8000/admin/ (초기 계정: admin / admin)
+```
+
+## 지원 환경
+
+| 분류 | 지원 |
+|------|------|
+| **DNS 프로바이더** | AWS Route53, Azure DNS, BIND REST API |
+| **Webhook** | Slack, Discord, Microsoft Teams, 카카오워크, Custom HTTP |
+| **인증** | requirepass, Valkey 7+ ACL (username + password) |
+| **저장소** | Valkey (Sentinel HA), Memory (개발용) |
+| **OS** | Linux (Debian/Ubuntu, RHEL/CentOS, Amazon Linux) |
+| **언어** | 영어, 한국어 |
+
+## API
+
+Bearer 토큰 인증. 웹 UI → Settings → API Token에서 발급.
+
+```
+GET  /api/v1/health              # 헬스체크 (인증 불필요)
+
+GET    /api/v1/clusters          # 클러스터 목록
+POST   /api/v1/clusters          # 클러스터 생성
+GET    /api/v1/clusters/{name}   # 클러스터 조회
+DELETE /api/v1/clusters/{name}   # 클러스터 삭제
+
+GET    /api/v1/sentinels         # 센티널 목록
+POST   /api/v1/sentinels         # 센티널 생성
+GET    /api/v1/sentinels/{name}  # 센티널 조회
+DELETE /api/v1/sentinels/{name}  # 센티널 삭제
+
+GET    /api/v1/events            # 이벤트 목록
+POST   /api/v1/events            # 이벤트 수신 (Agent 호출)
+```
+
+## 기술 스택
+
+| 영역 | 기술 |
+|------|------|
+| 언어 | Go 1.24+ |
+| 웹 서버 | `net/http` (표준 라이브러리, Go 1.22+ 라우팅) |
+| 템플릿 | `html/template` + `embed.FS` |
+| Valkey 클라이언트 | `valkey-io/valkey-go` |
+| DNS | `aws-sdk-go-v2`, `azure-sdk-for-go`, BIND REST API |
+| 보안 | AES-256-GCM, CSRF, Bearer 토큰, 브루트포스 방어 |
+| UI | Tailwind CSS, Plus Jakarta Sans (로컬 woff2) |
+
+---
+
 ## Project Structure / 프로젝트 구조
 
 ```
 valkey-sentinel-manager/
 ├── cmd/
-│   ├── sentinel-manager/     # Manager 엔트리포인트
-│   └── sentinel-agent/       # Agent 엔트리포인트
+│   ├── sentinel-manager/     # Manager entry point
+│   └── sentinel-agent/       # Agent entry point
 ├── internal/
-│   ├── api/                  # REST API 핸들러
-│   ├── config/               # YAML 설정 로드
-│   ├── core/                 # 이벤트 처리, 페일오버, 헬스체크, 알림, CLIENT KILL
-│   ├── dns/                  # DNS 프로바이더 (Route53, Azure, BIND)
-│   ├── models/               # 데이터 모델 (Cluster, Event, Sentinel, Webhook)
-│   ├── server/               # HTTP 서버, 미들웨어, 라우터, 템플릿
-│   ├── store/                # 저장소 인터페이스 + 구현체 (Memory, Valkey)
-│   ├── agent/                # Agent CLI 로직
-│   └── web/                  # 웹 UI 핸들러, 세션, i18n, CSRF, 암호화
+│   ├── api/                  # REST API handlers
+│   ├── config/               # YAML config loader
+│   ├── core/                 # Event processing, failover, health check, notification, CLIENT KILL
+│   ├── dns/                  # DNS providers (Route53, Azure, BIND)
+│   ├── models/               # Data models (Cluster, Event, Sentinel, Webhook)
+│   ├── server/               # HTTP server, middleware, router, template
+│   ├── store/                # Store interface + implementations (Memory, Valkey)
+│   ├── agent/                # Agent CLI logic
+│   └── web/                  # Web UI handlers, session, i18n, CSRF, encryption
 ├── web/
 │   ├── templates/            # Go html/template (15+ pages)
 │   └── static/               # CSS, JS, fonts (embedded)
 ├── deploy/
-│   └── install.sh            # 통합 설치 스크립트
-├── config.yaml.example       # Manager 설정 예제
-├── sentinel-agent.yaml.example # Agent 설정 예제
+│   └── install.sh            # Unified install script
+├── config.yaml.example
+├── sentinel-agent.yaml.example
 ├── Makefile
 ├── Dockerfile
 └── Dockerfile.agent
@@ -269,13 +448,13 @@ valkey-sentinel-manager/
 ## Development / 개발
 
 ```bash
-make build          # Build both binaries
-make build-manager  # Build manager only
-make build-agent    # Build agent only
-make test           # Run tests with race detector
-make vet            # Static analysis
+make build          # Build both binaries / 양쪽 빌드
+make build-manager  # Build manager only / Manager만
+make build-agent    # Build agent only / Agent만
+make test           # Run tests with race detector / 테스트
+make vet            # Static analysis / 정적 분석
 make lint           # golangci-lint
-make run            # Dev run (memory store)
+make run            # Dev run (memory store) / 개발 실행
 make docker-build   # Docker image
 ```
 
