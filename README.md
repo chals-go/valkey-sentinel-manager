@@ -1,6 +1,8 @@
 # Valkey Sentinel Manager
 
-> **Pro Tip / 꿀팁:** Just use Valkey Cluster mode. It handles everything — automatic sharding, failover, rebalancing — no DNS, no Sentinel, no Manager needed. Problem solved.
+> [!TIP]
+> **Just use Valkey Cluster mode.** It handles everything — automatic sharding, failover, rebalancing — no DNS, no Sentinel, no Manager needed. Problem solved.
+>
 > **그냥 Valkey Cluster 모드 쓰세요.** 자동 샤딩, 페일오버, 리밸런싱 다 해줍니다. DNS도 필요 없고, Sentinel도 필요 없고, 이 Manager도 필요 없습니다. 모든 게 해결됩니다.
 
 **Web-based Valkey Sentinel Management & DNS Failover Automation**
