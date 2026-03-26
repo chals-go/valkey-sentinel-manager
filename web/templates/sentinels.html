@@ -17,7 +17,7 @@
       {{/* Connection summary badge — count connected nodes */}}
       {{ $connCount := 0 }}{{ range $nodes }}{{ if index $.Data.PingResults .SentinelNodeName }}{{ $connCount = add $connCount 1 }}{{ end }}{{ end }}
       {{ if eq $connCount (len $nodes) }}
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>All Connected</span>
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "all_connected" }}</span>
       {{ else if gt $connCount 0 }}
       <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ $connCount }}/{{ len $nodes }} Connected</span>
       {{ else }}
@@ -86,7 +86,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ $grpName }} — {{ t "add_node" }}</h2>
-      <button data-modal-close="modal-add-node-{{ $grpName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-add-node-{{ $grpName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <form method="post" action="/admin/sentinels/{{ $grpName }}/add-node">
       <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
@@ -111,7 +111,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-red-600">{{ t "delete_group" }}</h2>
-      <button data-modal-close="modal-delete-group-{{ $grpName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-delete-group-{{ $grpName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <p class="text-sm text-slate-600 mb-6"><strong>{{ $grpName }}</strong> {{ t "delete_group_confirm_prefix" }} {{ len $nodes }} {{ t "delete_group_confirm_suffix" }}</p>
     <div class="flex justify-end gap-3">
@@ -129,7 +129,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ t "edit_sentinel_cluster" }} — {{ $grpName }}</h2>
-      <button data-modal-close="modal-edit-group-{{ $grpName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-edit-group-{{ $grpName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <form method="post" action="/admin/sentinels/{{ $grpName }}/edit">
       <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
@@ -181,7 +181,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ t "register_sentinel_cluster" }}</h2>
-      <button data-modal-close="modal-sentinel-new" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-sentinel-new" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <form method="post" action="/admin/sentinels/new-cluster">
       <input type="hidden" name="csrf_token" value="{{ csrfToken }}">

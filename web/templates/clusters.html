@@ -331,7 +331,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ t "edit_replication_group" }}</h2>
-      <button data-modal-close="modal-edit-{{ $c.MasterName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-edit-{{ $c.MasterName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "cluster_info" }}</div>
     <div class="grid grid-cols-2 gap-x-6 gap-y-2 mb-5 text-sm">
@@ -414,7 +414,7 @@
         </div>
       </div>
       {{ end }}
-      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">Authentication</div>
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "authentication" }}</div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "redis_username_optional" }}</label>
@@ -450,7 +450,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-slate-900">{{ t "run_failover" }}</h2>
-      <button data-modal-close="modal-failover-{{ $c.MasterName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-failover-{{ $c.MasterName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong> — {{ t "failover_confirm" }}<br><span class="text-amber-600 font-medium">{{ t "primary_changes_immediately" }}</span> {{ t "continue_question" }}</p>
     <div class="flex justify-end gap-3">
@@ -468,7 +468,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-red-600">{{ t "delete_replication_group" }}</h2>
-      <button data-modal-close="modal-delete-{{ $c.MasterName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-delete-{{ $c.MasterName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong> {{ t "delete_confirm" }}<br>{{ t "delete_sentinel_dns" }}</p>
     <div class="flex justify-end gap-3">
@@ -486,7 +486,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-slate-900">{{ t "sync_dns" }}</h2>
-      <button data-modal-close="modal-sync-dns-{{ $c.MasterName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-sync-dns-{{ $c.MasterName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong><br>{{ t "sync_dns_desc" }}</p>
     <div class="flex justify-end gap-3">
@@ -504,7 +504,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-slate-900">{{ t "pause_monitoring" }}</h2>
-      <button data-modal-close="modal-pause-{{ $c.MasterName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-pause-{{ $c.MasterName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong><br><br>{{ t "pause_desc" }}</p>
     <div class="flex justify-end gap-3">
@@ -522,7 +522,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-emerald-600">{{ t "resume_monitoring" }}</h2>
-      <button data-modal-close="modal-resume-{{ $c.MasterName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-resume-{{ $c.MasterName }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <p class="text-sm text-slate-600 mb-6"><strong class="font-mono">{{ $c.MasterName }}</strong><br><br>{{ t "resume_desc" }}</p>
     <div class="flex justify-end gap-3">
@@ -551,7 +551,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ t "register_replication_group" }}</h2>
-      <button data-modal-close="modal-cluster-new" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-cluster-new" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <form method="post" action="/admin/clusters/new">
       <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
@@ -698,7 +698,7 @@ if (sentClusterSel) sentClusterSel.addEventListener('change', checkDuplicateMoni
         <h2 class="text-lg font-bold text-slate-900">{{ t "load_sentinels" }}</h2>
         <p class="text-sm text-slate-400 mt-0.5">{{ t "load_sentinels_desc" }}</p>
       </div>
-      <button data-modal-close="modal-load-sentinels" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-load-sentinels" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <form id="load-sentinels-form" method="post" action="/admin/clusters/load-sentinels">
       <input type="hidden" name="csrf_token" value="{{ csrfToken }}">

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -94,7 +95,12 @@ func postJSON(ctx context.Context, url string, payload any, headers map[string]s
 	}
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range headers {
-		req.Header.Set(k, v)
+		// Sanitize header key/value to prevent CRLF injection
+		k = strings.ReplaceAll(strings.ReplaceAll(k, "\r", ""), "\n", "")
+		v = strings.ReplaceAll(strings.ReplaceAll(v, "\r", ""), "\n", "")
+		if k != "" {
+			req.Header.Set(k, v)
+		}
 	}
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -102,6 +108,7 @@ func postJSON(ctx context.Context, url string, payload any, headers map[string]s
 		return fmt.Errorf("http post: %w", err)
 	}
 	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body)
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("http status %d", resp.StatusCode)
 	}

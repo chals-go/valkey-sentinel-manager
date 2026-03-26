@@ -168,19 +168,25 @@ func (fm *FailoverManager) handleFailover(ctx context.Context, cluster *models.C
 			}
 			if len(slaveIPs) > 0 {
 				slog.Info("replica DNS reset from sentinel", "record", rdns.RecordName+"."+rdns.Zone, "ips", slaveIPs, "excluded_master", newMasterIP)
-				provider.UpdateRecordValues(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, slaveIPs, rdns.TTL)
+				if err := provider.UpdateRecordValues(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, slaveIPs, rdns.TTL); err != nil {
+					slog.Error("replica DNS update failed", "error", err)
+				}
 			} else {
 				// All slaves are master IPs — old master demoted to slave is the only replica.
 				if validateIP(event.FromIP) && event.FromIP != newMasterIP {
 					slog.Info("replica DNS set to demoted master", "record", rdns.RecordName+"."+rdns.Zone, "ip", event.FromIP)
-					provider.UpdateRecord(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, event.FromIP, rdns.TTL)
+					if err := provider.UpdateRecord(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, event.FromIP, rdns.TTL); err != nil {
+						slog.Error("replica DNS update failed", "error", err)
+					}
 				} else {
 					slog.Warn("no healthy slaves, keeping replica DNS", "record", rdns.RecordName+"."+rdns.Zone)
 				}
 			}
 		} else if !cluster.MultiReplica && validateIP(event.FromIP) {
 			slog.Info("replica DNS fallback (single)", "record", rdns.RecordName+"."+rdns.Zone, "ip", event.FromIP)
-			provider.UpdateRecord(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, event.FromIP, rdns.TTL)
+			if err := provider.UpdateRecord(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, event.FromIP, rdns.TTL); err != nil {
+				slog.Error("replica DNS update failed", "error", err)
+			}
 		}
 	}
 
@@ -239,7 +245,9 @@ func (fm *FailoverManager) handleReplicaDown(ctx context.Context, cluster *model
 		}
 		if len(slaveIPs) > 0 {
 			slog.Info("replica DNS reset (replica_down)", "record", rdns.RecordName+"."+rdns.Zone, "ips", slaveIPs, "removed", event.FromIP)
-			provider.UpdateRecordValues(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, slaveIPs, rdns.TTL)
+			if err := provider.UpdateRecordValues(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, slaveIPs, rdns.TTL); err != nil {
+				slog.Error("replica DNS update failed", "error", err)
+			}
 		} else {
 			slog.Warn("no healthy slaves after removing down replica, keeping replica DNS", "down_ip", event.FromIP)
 		}
@@ -278,7 +286,9 @@ func (fm *FailoverManager) handleReplicaUp(ctx context.Context, cluster *models.
 		}
 		if len(slaveIPs) > 0 {
 			slog.Info("replica DNS reset (replica_up)", "record", rdns.RecordName+"."+rdns.Zone, "ips", slaveIPs)
-			provider.UpdateRecordValues(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, slaveIPs, rdns.TTL)
+			if err := provider.UpdateRecordValues(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, slaveIPs, rdns.TTL); err != nil {
+				slog.Error("replica DNS update failed", "error", err)
+			}
 		}
 	} else if !cluster.MultiReplica {
 		if detail != nil && event.FromIP == detail.MasterIP {
@@ -286,7 +296,9 @@ func (fm *FailoverManager) handleReplicaUp(ctx context.Context, cluster *models.
 			return
 		}
 		slog.Info("replica DNS replace (single)", "record", rdns.RecordName+"."+rdns.Zone, "ip", event.FromIP)
-		provider.UpdateRecord(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, event.FromIP, rdns.TTL)
+		if err := provider.UpdateRecord(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, event.FromIP, rdns.TTL); err != nil {
+			slog.Error("replica DNS update failed", "error", err)
+		}
 	} else {
 		if detail != nil && event.FromIP == detail.MasterIP {
 			slog.Warn("replica_up IP is current primary, skipping", "ip", event.FromIP)

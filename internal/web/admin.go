@@ -769,7 +769,10 @@ func (h *AdminHandler) LoadSentinelsSave(w http.ResponseWriter, r *http.Request)
 			QuorumMode:      true,
 			QuorumThreshold: info.Quorum,
 		}
-		h.store.SaveCluster(ctx, cluster)
+		if err := h.store.SaveCluster(ctx, cluster); err != nil {
+			slog.Error("save cluster failed", "name", name, "error", err)
+			continue
+		}
 		// 센티널 설정 적용 (down-after-ms, failover-timeout, scripts)
 		core.SentinelApplyConfig(ctx, addrs, name, "", "", downMs, failTimeout)
 		count++
@@ -1682,7 +1685,9 @@ func (h *AdminHandler) WebhookCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	h.store.SaveWebhook(ctx, wh)
+	if err := h.store.SaveWebhook(ctx, wh); err != nil {
+		slog.Error("save webhook failed", "error", err)
+	}
 	h.redirect(w, r, "/admin/settings/notification")
 }
 
@@ -1724,7 +1729,9 @@ func (h *AdminHandler) WebhookEdit(w http.ResponseWriter, r *http.Request) {
 		wh.CustomHeaders = nil
 	}
 
-	h.store.SaveWebhook(ctx, wh)
+	if err := h.store.SaveWebhook(ctx, wh); err != nil {
+		slog.Error("save webhook failed", "error", err)
+	}
 	h.redirect(w, r, "/admin/settings/notification")
 }
 

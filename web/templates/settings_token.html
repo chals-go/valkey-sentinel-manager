@@ -46,7 +46,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold text-red-600">{{ t "delete_token" }}</h2>
-      <button data-modal-close="modal-delete-token-{{ $name }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-delete-token-{{ $name }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <p class="text-sm text-slate-600 mb-6">{{ t "delete_token_confirm" }} <strong class="font-mono">{{ $name }}</strong></p>
     <div class="flex justify-end gap-3">
@@ -76,7 +76,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ t "generate_token" }}</h2>
-      <button data-modal-close="modal-token-new" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-token-new" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <form method="post" action="/admin/regenerate-token">
       <input type="hidden" name="csrf_token" value="{{ csrfToken }}">

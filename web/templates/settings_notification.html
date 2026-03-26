@@ -77,7 +77,7 @@
         <div class="bg-white rounded-2xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl">
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-lg font-bold text-slate-900">{{ t "edit_webhook" }}</h2>
-            <button data-modal-close="modal-webhook-edit-{{ $wh.ID }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+            <button data-modal-close="modal-webhook-edit-{{ $wh.ID }}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
           </div>
           <form method="post" action="/admin/webhook/{{ $wh.ID }}/edit">
             <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
@@ -120,7 +120,7 @@
   <div class="bg-white rounded-2xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900">{{ t "add_webhook" }}</h2>
-      <button data-modal-close="modal-webhook-new" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100">&#10005;</button>
+      <button data-modal-close="modal-webhook-new" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-gray-100" aria-label="{{ t "close" }}">&#10005;</button>
     </div>
     <form method="post" action="/admin/webhook">
       <input type="hidden" name="csrf_token" value="{{ csrfToken }}">

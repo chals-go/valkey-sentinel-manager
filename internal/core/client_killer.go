@@ -47,7 +47,6 @@ func executeClientKill(addr, username, password string) (int64, error) {
 		Password:          password,
 		DisableCache:      true,
 		ForceSingleClient: true,
-		ConnWriteTimeout:  clientKillTimeout,
 	}
 	if username != "" {
 		opts.Username = username
@@ -69,7 +68,7 @@ func executeClientKill(addr, username, password string) (int64, error) {
 
 	killed, err := resp.AsInt64()
 	if err != nil {
-		// 일부 버전은 문자열로 반환할 수 있음
+		slog.Info("CLIENT KILL response not integer (may be OK response)", "addr", addr)
 		return 0, nil
 	}
 	return killed, nil
