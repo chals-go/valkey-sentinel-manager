@@ -116,6 +116,7 @@
   {{ end }}
 {{ end }}
 
+<div id="page-content">
 {{ if eq .Page "login" }}{{ template "login-content" . }}
 {{ else if eq .Page "dashboard" }}{{ template "dashboard-content" . }}
 {{ else if eq .Page "clusters" }}{{ template "clusters-content" . }}
@@ -130,6 +131,7 @@
 {{ else if eq .Page "cluster-edit" }}{{ template "cluster-edit-content" . }}
 {{ else if eq .Page "settings-dns-edit" }}{{ template "settings-dns-edit-content" . }}
 {{ end }}
+</div>
 
 {{ if not .HideSidebar }}
 </main>

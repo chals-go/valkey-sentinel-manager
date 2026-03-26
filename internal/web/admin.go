@@ -79,6 +79,16 @@ func (h *AdminHandler) render(w http.ResponseWriter, r *http.Request, name strin
 	}
 	tmpl.Funcs(funcMap)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	// Fragment mode: content 영역만 반환 (AJAX 부분 갱신용)
+	if r.URL.Query().Get("fragment") == "true" {
+		contentName := data.Page + "-content"
+		if err := tmpl.ExecuteTemplate(w, contentName, data); err != nil {
+			http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
 	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
 		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
 	}

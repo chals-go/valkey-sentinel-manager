@@ -230,7 +230,36 @@ function startAutoRefresh(seconds) {
   autoRefreshTimer = setInterval(function() {
     // Skip if a modal is open
     if (document.querySelector('.modal-overlay.open')) return;
-    location.reload();
+
+    // AJAX partial refresh — content 영역만 갱신
+    var url = window.location.pathname + window.location.search;
+    var sep = url.indexOf('?') >= 0 ? '&' : '?';
+    fetch(url + sep + 'fragment=true', { credentials: 'same-origin' })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function(html) {
+      var container = document.getElementById('page-content');
+      if (container && html.trim()) {
+        // 펼침 상태 보존
+        var openDetails = [];
+        container.querySelectorAll('details[open]').forEach(function(d) {
+          openDetails.push(d.id);
+        });
+
+        container.innerHTML = html;
+
+        // 펼침 상태 복원
+        openDetails.forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.setAttribute('open', '');
+        });
+      }
+    })
+    .catch(function(err) {
+      console.warn('Auto-refresh failed:', err.message);
+    });
   }, seconds * 1000);
   localStorage.setItem('autoRefreshSeconds', seconds);
   localStorage.setItem('autoRefreshEnabled', 'true');
