@@ -184,6 +184,14 @@ func (fm *FailoverManager) handleFailover(ctx context.Context, cluster *models.C
 		}
 	}
 
+	// CLIENT KILL on old primary (best-effort, async)
+	if validateIP(event.FromIP) && event.FromPort > 0 {
+		rt, _ := fm.store.GetRuntimeSettings(ctx)
+		if rt["client_kill_enabled"] != "false" {
+			go KillOldPrimaryClients(event.FromIP, event.FromPort, cluster.RedisUsername, cluster.RedisPassword)
+		}
+	}
+
 	slog.Info("failover completed", "cluster", cluster.GroupName, "new_master", event.ToIP)
 }
 

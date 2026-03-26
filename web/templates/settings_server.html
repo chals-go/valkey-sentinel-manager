@@ -84,6 +84,15 @@
         </div>
       </div>
 
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "failover_settings" }}</div>
+      <div class="mb-6">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" name="client_kill_enabled" value="true" {{ if ne (index .Data.RuntimeSettings "client_kill_enabled") "false" }}checked{{ end }} class="w-4 h-4 accent-indigo-600 rounded">
+          <span class="text-sm text-slate-700">{{ t "client_kill_enabled" }}</span>
+        </label>
+        <p class="text-xs text-slate-400 mt-1 ml-7">{{ t "client_kill_desc" }}</p>
+      </div>
+
       <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">{{ t "language" }}</div>
       <div class="mb-6 max-w-xs">
         <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "language" }}</label>

@@ -1309,6 +1309,7 @@ func (h *AdminHandler) SettingsServer(w http.ResponseWriter, r *http.Request) {
 		"sentinel_failover_timeout":  "30000",
 		"language":                   "en",
 		"sentinel_ping_interval":     "5",
+		"client_kill_enabled":        "true",
 	}
 	for k, v := range defaults {
 		if rt[k] == "" {
@@ -1345,6 +1346,12 @@ func (h *AdminHandler) SettingsServerSave(w http.ResponseWriter, r *http.Request
 		"sentinel_failover_timeout":  r.FormValue("sentinel_failover_timeout"),
 		"language":                   r.FormValue("language"),
 		"sentinel_ping_interval":     r.FormValue("sentinel_ping_interval"),
+	}
+	// 체크박스: 미체크 시 빈 문자열 → "false"로 변환
+	if r.FormValue("client_kill_enabled") == "true" {
+		settings["client_kill_enabled"] = "true"
+	} else {
+		settings["client_kill_enabled"] = "false"
 	}
 	h.store.SaveRuntimeSettings(ctx, settings)
 
