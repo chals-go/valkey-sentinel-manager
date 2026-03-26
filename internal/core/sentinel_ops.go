@@ -75,7 +75,7 @@ func PingSentinel(ctx context.Context, host string, port int, password string) b
 }
 
 // SentinelMonitor는 주어진 모든 센티널 인스턴스에 새 마스터를 등록한다.
-func SentinelMonitor(ctx context.Context, sentinelAddrs []string, masterName, masterIP string, masterPort, quorum int, authPass, sentinelPassword string, downAfterMs, failoverTimeout int) map[string]bool {
+func SentinelMonitor(ctx context.Context, sentinelAddrs []string, masterName, masterIP string, masterPort, quorum int, authUser, authPass, sentinelPassword string, downAfterMs, failoverTimeout int) map[string]bool {
 	results := make(map[string]bool, len(sentinelAddrs))
 
 	for _, addr := range sentinelAddrs {
@@ -95,6 +95,9 @@ func SentinelMonitor(ctx context.Context, sentinelAddrs []string, masterName, ma
 		} else {
 			slog.Info("SENTINEL MONITOR ok", "addr", addr, "master", masterName)
 
+			if authUser != "" {
+				client.Do(ctx, client.B().Arbitrary("SENTINEL", "SET", masterName, "auth-user", authUser).Build())
+			}
 			if authPass != "" {
 				client.Do(ctx, client.B().Arbitrary("SENTINEL", "SET", masterName, "auth-pass", authPass).Build())
 			}
@@ -134,11 +137,14 @@ func SentinelSetConfig(ctx context.Context, sentinelAddrs []string, masterName, 
 }
 
 // SentinelApplyConfig는 센티널 마스터에 down-after-ms, failover-timeout, 스크립트를 일괄 적용한다.
-func SentinelApplyConfig(ctx context.Context, sentinelAddrs []string, masterName, sentinelPassword string, downAfterMs, failoverTimeout int) {
+func SentinelApplyConfig(ctx context.Context, sentinelAddrs []string, masterName, authUser, sentinelPassword string, downAfterMs, failoverTimeout int) {
 	for _, addr := range sentinelAddrs {
 		client, err := newSentinelClient(addr, sentinelPassword)
 		if err != nil {
 			continue
+		}
+		if authUser != "" {
+			client.Do(ctx, client.B().Arbitrary("SENTINEL", "SET", masterName, "auth-user", authUser).Build())
 		}
 		client.Do(ctx, client.B().Arbitrary("SENTINEL", "SET", masterName, "down-after-milliseconds", strconv.Itoa(downAfterMs)).Build())
 		client.Do(ctx, client.B().Arbitrary("SENTINEL", "SET", masterName, "failover-timeout", strconv.Itoa(failoverTimeout)).Build())

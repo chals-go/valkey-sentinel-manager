@@ -35,6 +35,8 @@ type Cluster struct {
 	MultiReplica bool `json:"multi_replica"`
 	// RedisPassword는 Valkey(Redis) 노드 인증에 사용하는 비밀번호이다.
 	RedisPassword string `json:"redis_password"`
+	// RedisUsername은 Valkey ACL 인증에 사용하는 사용자명이다 (Valkey 7+, 빈 문자열이면 requirepass 사용).
+	RedisUsername string `json:"redis_username,omitempty"`
 	// SentinelPassword는 센티널 노드 인증에 사용하는 비밀번호이다.
 	SentinelPassword string `json:"sentinel_password"`
 	// QuorumMode가 true이면 쿼럼 기반 페일오버 로직을 활성화한다.

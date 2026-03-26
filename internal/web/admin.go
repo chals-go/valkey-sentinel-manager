@@ -558,6 +558,7 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 		quorumThreshold = 2
 	}
 	redisPassword := r.FormValue("redis_password")
+	redisUsername := strings.TrimSpace(r.FormValue("redis_username"))
 	dnsTTL, _ := strconv.Atoi(r.FormValue("dns_ttl"))
 	if dnsTTL == 0 {
 		dnsTTL = 3
@@ -609,6 +610,7 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 		PrimaryPort:      primaryPort,
 		PrimaryDNS:       primaryDNS,
 		RedisPassword:    redisPassword,
+		RedisUsername:    redisUsername,
 		SentinelPassword: sentinelPassword,
 		QuorumMode:       quorumMode,
 		QuorumThreshold:  quorumThreshold,
@@ -621,7 +623,7 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 	downMs := intFromMap(rt, "sentinel_down_after_ms", 5000)
 	failTimeout := intFromMap(rt, "sentinel_failover_timeout", 30000)
 
-	core.SentinelMonitor(ctx, cluster.SentinelAddrs, cluster.MasterName, cluster.PrimaryIP, cluster.PrimaryPort, cluster.QuorumThreshold, cluster.RedisPassword, cluster.SentinelPassword, downMs, failTimeout)
+	core.SentinelMonitor(ctx, cluster.SentinelAddrs, cluster.MasterName, cluster.PrimaryIP, cluster.PrimaryPort, cluster.QuorumThreshold, cluster.RedisUsername, cluster.RedisPassword, cluster.SentinelPassword, downMs, failTimeout)
 
 	// DNS record creation.
 	detail := core.GetMasterDetail(ctx, cluster.SentinelAddrs, cluster.MasterName, cluster.SentinelPassword)
@@ -769,7 +771,7 @@ func (h *AdminHandler) LoadSentinelsSave(w http.ResponseWriter, r *http.Request)
 		}
 		h.store.SaveCluster(ctx, cluster)
 		// 센티널 설정 적용 (down-after-ms, failover-timeout, scripts)
-		core.SentinelApplyConfig(ctx, addrs, name, "", downMs, failTimeout)
+		core.SentinelApplyConfig(ctx, addrs, name, "", "", downMs, failTimeout)
 		count++
 	}
 
@@ -890,9 +892,23 @@ func (h *AdminHandler) ClusterEditSave(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	// Redis 인증 정보 업데이트 (비밀번호가 제출된 경우에만 반영)
+	newRedisPassword := r.FormValue("redis_password")
+	newRedisUsername := strings.TrimSpace(r.FormValue("redis_username"))
+	passwordChanged := newRedisPassword != ""
+	if passwordChanged {
+		cluster.RedisPassword = newRedisPassword
+		cluster.RedisUsername = newRedisUsername
+	}
+
 	h.store.SaveCluster(ctx, cluster)
 
 	core.SentinelSetConfig(ctx, cluster.SentinelAddrs, cluster.MasterName, cluster.SentinelPassword, downAfterMs, failoverTimeout)
+
+	// 비밀번호가 변경된 경우 센티널에 auth-user/auth-pass 업데이트 적용
+	if passwordChanged {
+		core.SentinelApplyConfig(ctx, cluster.SentinelAddrs, cluster.MasterName, cluster.RedisUsername, cluster.SentinelPassword, downAfterMs, failoverTimeout)
+	}
 
 	h.redirect(w, r, "/admin/clusters")
 }
