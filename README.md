@@ -1,6 +1,10 @@
 # Valkey Sentinel Manager
 
-**Valkey Sentinel DNS Failover Automation System**
+**Web-based Valkey Sentinel Management & DNS Failover Automation**
+
+Manage Valkey Sentinel clusters through a web UI — register/edit/delete replication groups, monitor sentinel nodes, automate DNS failover, and receive multi-channel notifications.
+
+Valkey Sentinel 클러스터를 웹 UI로 통합 관리 — Replication Group 등록/수정/삭제, Sentinel 노드 모니터링, DNS 페일오버 자동화, 다채널 알림을 제공하는 시스템.
 
 [English](#english) | [한국어](#한국어)
 
