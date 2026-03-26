@@ -58,7 +58,7 @@
         {{ $detail := index $.Data.LiveInfo $c.MasterName }}
         <tr class="hover:bg-gray-50/50 transition-colors">
           <td class="px-6 py-3 border-b border-gray-50">
-            <a href="/admin/clusters" class="text-sm font-medium text-slate-900 hover:text-indigo-600">{{ $c.MasterName }}</a>
+            <a href="/admin/clusters?expand={{ $c.MasterName }}" class="text-sm font-medium text-slate-900 hover:text-indigo-600">{{ $c.MasterName }}</a>
             {{ if $c.IsPaused }}
             <span class="ml-1 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ t "paused" }}</span>
             {{ else if not $detail }}

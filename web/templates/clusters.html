@@ -36,7 +36,7 @@
     {{ $detail := index $.Data.LiveInfo $c.MasterName }}
 
     <!-- Summary row -->
-    <tr id="cluster-{{ $idx }}" class="cursor-pointer hover:bg-gray-50/50 transition-colors" data-toggle-detail="detail-{{ $idx }}">
+    <tr id="cluster-{{ $idx }}" class="cursor-pointer hover:bg-gray-50/50 transition-colors" data-toggle-detail="detail-{{ $idx }}" data-master-name="{{ $c.MasterName }}">
       <td class="px-4 py-4 border-b border-gray-50">
         <svg class="w-4 h-4 text-slate-300 transition-transform duration-200 chevron-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
       </td>
@@ -630,6 +630,23 @@
 </div>
 
 <script>
+// Auto-expand from ?expand=masterName query parameter
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var expand = params.get('expand');
+  if (expand) {
+    var row = document.querySelector('[data-master-name="' + expand + '"]');
+    if (row) {
+      var detailId = row.getAttribute('data-toggle-detail');
+      var detail = document.getElementById(detailId);
+      if (detail) {
+        detail.setAttribute('open', '');
+        row.scrollIntoView({behavior: 'smooth', block: 'center'});
+      }
+    }
+  }
+})();
+
 var existingMasters = {{ toJSON .Data.ExistingMasters }};
 
 function updateNewDnsPreview() {
