@@ -141,7 +141,7 @@
 <div class="space-y-4 mb-6">
   <div>
     <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "webhook_name" }}</label>
-    <input type="text" name="name" required value="{{ if $isEdit }}{{ .Name }}{{ end }}" placeholder="e.g. Production Slack" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+    <input type="text" name="name" required value="{{ if $isEdit }}{{ .Name }}{{ end }}" placeholder="{{ t "webhook_name_placeholder" }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
   </div>
   <div>
     <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "webhook_type" }}</label>
@@ -172,7 +172,7 @@
     </div>
     <div>
       <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "conversation_id" }}</label>
-      <input type="text" name="conversation_id" value="{{ if $isEdit }}{{ .ConversationID }}{{ end }}" placeholder="채팅방 ID" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+      <input type="text" name="conversation_id" value="{{ if $isEdit }}{{ .ConversationID }}{{ end }}" placeholder="{{ t "conversation_id_placeholder" }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
     </div>
   </div>
 
