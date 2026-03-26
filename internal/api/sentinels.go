@@ -47,7 +47,7 @@ func CreateSentinelHandler(s store.Store) http.HandlerFunc {
 		}
 
 		sentinel := models.NewSentinel(req.SentinelNodeName, req.GroupName, req.Host, req.Port)
-		if err := s.RegisterSentinel(r.Context(), sentinel); err != nil {
+		if err := s.SaveSentinel(r.Context(), sentinel); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to register sentinel")
 			return
 		}
@@ -79,7 +79,7 @@ func GetSentinelHandler(s store.Store) http.HandlerFunc {
 func DeleteSentinelHandler(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := r.PathValue("name")
-		removed, err := s.UnregisterSentinel(r.Context(), name)
+		removed, err := s.DeleteSentinel(r.Context(), name)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to delete sentinel")
 			return

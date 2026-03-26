@@ -172,8 +172,8 @@ func (s *ValkeyStore) ReleaseLock(ctx context.Context, key string) error {
 
 // === Sentinels ===
 
-// RegisterSentinel은 센티널 정보를 해시로 저장하여 등록한다.
-func (s *ValkeyStore) RegisterSentinel(ctx context.Context, sen *models.Sentinel) error {
+// SaveSentinel은 센티널 정보를 해시로 저장하여 등록한다.
+func (s *ValkeyStore) SaveSentinel(ctx context.Context, sen *models.Sentinel) error {
 	key := "smgr:sentinel_node:" + sen.SentinelNodeName
 	fields := map[string]string{
 		"sentinel_node_name": sen.SentinelNodeName,
@@ -200,8 +200,8 @@ func (s *ValkeyStore) RegisterSentinel(ctx context.Context, sen *models.Sentinel
 	return nil
 }
 
-// UnregisterSentinel은 센티널을 제거한다.
-func (s *ValkeyStore) UnregisterSentinel(ctx context.Context, name string) (bool, error) {
+// DeleteSentinel은 센티널을 제거한다.
+func (s *ValkeyStore) DeleteSentinel(ctx context.Context, name string) (bool, error) {
 	key := "smgr:sentinel_node:" + name
 	deleted, err := s.client.Do(ctx, s.client.B().Del().Key(key).Build()).AsInt64()
 	if err != nil {
@@ -273,8 +273,8 @@ func (s *ValkeyStore) UpdateSentinelLastSeen(ctx context.Context, name string, t
 
 // === Clusters ===
 
-// RegisterCluster는 클러스터를 JSON 문자열로 직렬화하여 저장한다.
-func (s *ValkeyStore) RegisterCluster(ctx context.Context, c *models.Cluster) error {
+// SaveCluster는 클러스터를 JSON 문자열로 직렬화하여 저장한다.
+func (s *ValkeyStore) SaveCluster(ctx context.Context, c *models.Cluster) error {
 	key := "smgr:group:" + c.MasterName
 	data, err := json.Marshal(c)
 	if err != nil {
@@ -293,8 +293,8 @@ func (s *ValkeyStore) RegisterCluster(ctx context.Context, c *models.Cluster) er
 	return nil
 }
 
-// UnregisterCluster는 master_name으로 클러스터를 제거한다.
-func (s *ValkeyStore) UnregisterCluster(ctx context.Context, masterName string) (bool, error) {
+// DeleteCluster는 master_name으로 클러스터를 제거한다.
+func (s *ValkeyStore) DeleteCluster(ctx context.Context, masterName string) (bool, error) {
 	key := "smgr:group:" + masterName
 	raw, err := s.client.Do(ctx, s.client.B().Get().Key(key).Build()).ToString()
 	if err != nil || raw == "" {

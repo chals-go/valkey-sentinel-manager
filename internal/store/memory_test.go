@@ -46,8 +46,8 @@ func TestMemoryStore_ClusterCRUD(t *testing.T) {
 		PrimaryDNS:    models.DNSMapping{Zone: "example.com", RecordName: "primary", RecordType: "A", TTL: 3},
 	}
 
-	if err := s.RegisterCluster(ctx, cluster); err != nil {
-		t.Fatalf("RegisterCluster: %v", err)
+	if err := s.SaveCluster(ctx, cluster); err != nil {
+		t.Fatalf("SaveCluster: %v", err)
 	}
 
 	got, err := s.GetCluster(ctx, "test-master")
@@ -66,12 +66,12 @@ func TestMemoryStore_ClusterCRUD(t *testing.T) {
 		t.Fatalf("ListClusters len = %d, want 1", len(clusters))
 	}
 
-	removed, err := s.UnregisterCluster(ctx, "test-master")
+	removed, err := s.DeleteCluster(ctx, "test-master")
 	if err != nil {
-		t.Fatalf("UnregisterCluster: %v", err)
+		t.Fatalf("DeleteCluster: %v", err)
 	}
 	if !removed {
-		t.Fatal("UnregisterCluster returned false")
+		t.Fatal("DeleteCluster returned false")
 	}
 
 	_, err = s.GetCluster(ctx, "test-master")

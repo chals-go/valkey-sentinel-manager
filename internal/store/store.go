@@ -32,10 +32,10 @@ type Store interface {
 
 	// 센티널
 
-	// RegisterSentinel은 센티널 노드를 등록한다.
-	RegisterSentinel(ctx context.Context, s *models.Sentinel) error
-	// UnregisterSentinel은 센티널 노드를 제거한다.
-	UnregisterSentinel(ctx context.Context, name string) (bool, error)
+	// SaveSentinel은 센티널 노드를 등록한다.
+	SaveSentinel(ctx context.Context, s *models.Sentinel) error
+	// DeleteSentinel은 센티널 노드를 제거한다.
+	DeleteSentinel(ctx context.Context, name string) (bool, error)
 	// GetSentinel은 이름으로 센티널을 조회한다.
 	GetSentinel(ctx context.Context, name string) (*models.Sentinel, error)
 	// ListSentinels는 모든 센티널 목록을 반환한다. groupName이 비어있으면 전체를 반환한다.
@@ -45,10 +45,10 @@ type Store interface {
 
 	// 클러스터
 
-	// RegisterCluster는 클러스터를 등록한다.
-	RegisterCluster(ctx context.Context, c *models.Cluster) error
-	// UnregisterCluster는 master_name으로 클러스터를 제거한다.
-	UnregisterCluster(ctx context.Context, masterName string) (bool, error)
+	// SaveCluster는 클러스터를 등록한다.
+	SaveCluster(ctx context.Context, c *models.Cluster) error
+	// DeleteCluster는 master_name으로 클러스터를 제거한다.
+	DeleteCluster(ctx context.Context, masterName string) (bool, error)
 	// GetCluster는 master_name으로 클러스터를 조회한다.
 	GetCluster(ctx context.Context, masterName string) (*models.Cluster, error)
 	// ListClusters는 등록된 모든 클러스터를 반환한다.

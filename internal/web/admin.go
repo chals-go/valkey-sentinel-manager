@@ -108,9 +108,9 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /admin/clusters/new", protect(http.HandlerFunc(h.ClusterFormPage)))
 	mux.Handle("POST /admin/clusters/new", protect(http.HandlerFunc(h.ClusterCreate)))
 	mux.Handle("POST /admin/clusters/load-sentinels/query", protect(http.HandlerFunc(h.LoadSentinelsQuery)))
-	mux.Handle("POST /admin/clusters/load-sentinels", protect(http.HandlerFunc(h.LoadSentinelsSubmit)))
+	mux.Handle("POST /admin/clusters/load-sentinels", protect(http.HandlerFunc(h.LoadSentinelsSave)))
 	mux.Handle("GET /admin/clusters/{masterName}/edit", protect(http.HandlerFunc(h.ClusterEditPage)))
-	mux.Handle("POST /admin/clusters/{masterName}/edit", protect(http.HandlerFunc(h.ClusterEditSubmit)))
+	mux.Handle("POST /admin/clusters/{masterName}/edit", protect(http.HandlerFunc(h.ClusterEditSave)))
 	mux.Handle("POST /admin/clusters/{masterName}/delete", protect(http.HandlerFunc(h.ClusterDelete)))
 	mux.Handle("POST /admin/clusters/{masterName}/pause", protect(http.HandlerFunc(h.ClusterPause)))
 	mux.Handle("POST /admin/clusters/{masterName}/resume", protect(http.HandlerFunc(h.ClusterResume)))
@@ -121,7 +121,7 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /admin/sentinels", protect(http.HandlerFunc(h.Sentinels)))
 	mux.Handle("POST /admin/sentinels/new-cluster", protect(http.HandlerFunc(h.SentinelClusterCreate)))
 	mux.Handle("POST /admin/sentinels/{grpName}/delete-cluster", protect(http.HandlerFunc(h.SentinelClusterDelete)))
-	mux.Handle("POST /admin/sentinels/{grpName}/edit", protect(http.HandlerFunc(h.SentinelClusterEditSubmit)))
+	mux.Handle("POST /admin/sentinels/{grpName}/edit", protect(http.HandlerFunc(h.SentinelClusterEditSave)))
 	mux.Handle("POST /admin/sentinels/{grpName}/toggle-alert", protect(http.HandlerFunc(h.SentinelToggleAlert)))
 	mux.Handle("POST /admin/sentinels/{grpName}/add-node", protect(http.HandlerFunc(h.SentinelAddNode)))
 	mux.Handle("POST /admin/sentinels/{nodeName}/delete-node", protect(http.HandlerFunc(h.SentinelDeleteNode)))
@@ -138,7 +138,7 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /admin/settings/dns", protect(http.HandlerFunc(h.SettingsDNS)))
 	mux.Handle("POST /admin/dns-provider/new", protect(http.HandlerFunc(h.DNSProviderCreate)))
 	mux.Handle("GET /admin/settings/dns/edit/{providerName}", protect(http.HandlerFunc(h.DNSProviderEditPage)))
-	mux.Handle("POST /admin/settings/dns/edit/{providerName}", protect(http.HandlerFunc(h.DNSProviderEditSubmit)))
+	mux.Handle("POST /admin/settings/dns/edit/{providerName}", protect(http.HandlerFunc(h.DNSProviderEditSave)))
 	mux.Handle("POST /admin/dns-provider/{providerName}/delete", protect(http.HandlerFunc(h.DNSProviderDelete)))
 	mux.Handle("GET /admin/settings/token", protect(http.HandlerFunc(h.SettingsToken)))
 	mux.Handle("POST /admin/regenerate-token", protect(http.HandlerFunc(h.RegenerateToken)))
@@ -613,7 +613,7 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 		QuorumMode:       quorumMode,
 		QuorumThreshold:  quorumThreshold,
 	}
-	h.store.RegisterCluster(ctx, cluster)
+	h.store.SaveCluster(ctx, cluster)
 
 	// Sentinel MONITOR.
 	rt, storeErr := h.store.GetRuntimeSettings(ctx)
@@ -633,7 +633,7 @@ func (h *AdminHandler) ClusterCreate(w http.ResponseWriter, r *http.Request) {
 			replicaDNS := &models.DNSMapping{Zone: cluster.PrimaryDNS.Zone, RecordName: rRec, RecordType: "A", TTL: cluster.PrimaryDNS.TTL}
 			cluster.ReplicaDNS = replicaDNS
 			cluster.MultiReplica = len(detail.Slaves) > 1
-			h.store.RegisterCluster(ctx, cluster)
+			h.store.SaveCluster(ctx, cluster)
 			if len(detail.Slaves) == 1 {
 				provider.UpdateRecord(ctx, replicaDNS.Zone, rRec, "A", detail.Slaves[0].IP, replicaDNS.TTL)
 			} else {
@@ -715,8 +715,8 @@ func (h *AdminHandler) LoadSentinelsQuery(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(map[string]any{"masters": results})
 }
 
-// LoadSentinelsSubmit은 선택된 마스터들을 DNS disabled 상태로 일괄 등록한다.
-func (h *AdminHandler) LoadSentinelsSubmit(w http.ResponseWriter, r *http.Request) {
+// LoadSentinelsSave는 선택된 마스터들을 DNS disabled 상태로 일괄 등록한다.
+func (h *AdminHandler) LoadSentinelsSave(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "invalid form data", http.StatusBadRequest)
@@ -767,7 +767,7 @@ func (h *AdminHandler) LoadSentinelsSubmit(w http.ResponseWriter, r *http.Reques
 			QuorumMode:      true,
 			QuorumThreshold: info.Quorum,
 		}
-		h.store.RegisterCluster(ctx, cluster)
+		h.store.SaveCluster(ctx, cluster)
 		// 센티널 설정 적용 (down-after-ms, failover-timeout, scripts)
 		core.SentinelApplyConfig(ctx, addrs, name, "", downMs, failTimeout)
 		count++
@@ -777,8 +777,8 @@ func (h *AdminHandler) LoadSentinelsSubmit(w http.ResponseWriter, r *http.Reques
 	h.redirect(w, r, "/admin/clusters")
 }
 
-// ClusterEditSubmit은 Replication Group 수정 폼 제출을 처리하고 DNS TTL 및 Sentinel 설정을 업데이트한다.
-func (h *AdminHandler) ClusterEditSubmit(w http.ResponseWriter, r *http.Request) {
+// ClusterEditSave는 Replication Group 수정 폼 제출을 처리하고 DNS TTL 및 Sentinel 설정을 업데이트한다.
+func (h *AdminHandler) ClusterEditSave(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	masterName := r.PathValue("masterName")
 	if err := r.ParseForm(); err != nil {
@@ -890,7 +890,7 @@ func (h *AdminHandler) ClusterEditSubmit(w http.ResponseWriter, r *http.Request)
 			}
 		}
 	}
-	h.store.RegisterCluster(ctx, cluster)
+	h.store.SaveCluster(ctx, cluster)
 
 	core.SentinelSetConfig(ctx, cluster.SentinelAddrs, cluster.MasterName, cluster.SentinelPassword, downAfterMs, failoverTimeout)
 
@@ -913,7 +913,7 @@ func (h *AdminHandler) ClusterDelete(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	h.store.UnregisterCluster(ctx, masterName)
+	h.store.DeleteCluster(ctx, masterName)
 	h.redirect(w, r, "/admin/clusters")
 }
 
@@ -937,7 +937,7 @@ func (h *AdminHandler) ClusterPause(w http.ResponseWriter, r *http.Request) {
 		cluster.PausedDownAfterMs = intFromMap(rt, "sentinel_down_after_ms", 5000)
 	}
 	cluster.IsPaused = true
-	h.store.RegisterCluster(ctx, cluster)
+	h.store.SaveCluster(ctx, cluster)
 
 	core.SentinelSetConfig(ctx, cluster.SentinelAddrs, cluster.MasterName, cluster.SentinelPassword, 7200000, 30000)
 	h.redirect(w, r, "/admin/clusters")
@@ -962,7 +962,7 @@ func (h *AdminHandler) ClusterResume(w http.ResponseWriter, r *http.Request) {
 
 	cluster.IsPaused = false
 	cluster.PausedDownAfterMs = 0
-	h.store.RegisterCluster(ctx, cluster)
+	h.store.SaveCluster(ctx, cluster)
 	h.redirect(w, r, "/admin/clusters")
 }
 
@@ -1081,7 +1081,7 @@ func (h *AdminHandler) SentinelClusterCreate(w http.ResponseWriter, r *http.Requ
 
 		if _, err := h.store.GetSentinel(ctx, sid); err != nil {
 			sentinel := models.NewSentinel(sid, clusterName, host, port)
-			h.store.RegisterSentinel(ctx, sentinel)
+			h.store.SaveSentinel(ctx, sentinel)
 		}
 	}
 
@@ -1095,7 +1095,7 @@ func (h *AdminHandler) SentinelClusterDelete(w http.ResponseWriter, r *http.Requ
 	sentinels, storeErr := h.store.ListSentinels(ctx, grpName)
 	if storeErr != nil { slog.Warn("store error", "method", "ListSentinels", "error", storeErr) }
 	for _, s := range sentinels {
-		h.store.UnregisterSentinel(ctx, s.SentinelNodeName)
+		h.store.DeleteSentinel(ctx, s.SentinelNodeName)
 	}
 	h.redirect(w, r, "/admin/sentinels")
 }
@@ -1118,7 +1118,7 @@ func (h *AdminHandler) SentinelAddNode(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := h.store.GetSentinel(ctx, nodeName); err != nil {
 		sentinel := models.NewSentinel(nodeName, grpName, host, port)
-		h.store.RegisterSentinel(ctx, sentinel)
+		h.store.SaveSentinel(ctx, sentinel)
 	}
 	h.redirect(w, r, "/admin/sentinels")
 }
@@ -1126,12 +1126,12 @@ func (h *AdminHandler) SentinelAddNode(w http.ResponseWriter, r *http.Request) {
 // SentinelDeleteNode는 특정 Sentinel 노드를 삭제하는 요청을 처리한다.
 func (h *AdminHandler) SentinelDeleteNode(w http.ResponseWriter, r *http.Request) {
 	nodeName := r.PathValue("nodeName")
-	h.store.UnregisterSentinel(r.Context(), nodeName)
+	h.store.DeleteSentinel(r.Context(), nodeName)
 	h.redirect(w, r, "/admin/sentinels")
 }
 
-// SentinelClusterEditSubmit은 Sentinel Cluster 수정 폼 제출을 처리하고 노드 정보와 알림 설정을 업데이트한다.
-func (h *AdminHandler) SentinelClusterEditSubmit(w http.ResponseWriter, r *http.Request) {
+// SentinelClusterEditSave는 Sentinel Cluster 수정 폼 제출을 처리하고 노드 정보와 알림 설정을 업데이트한다.
+func (h *AdminHandler) SentinelClusterEditSave(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	grpName := r.PathValue("grpName")
 	if err := r.ParseForm(); err != nil {
@@ -1157,9 +1157,9 @@ func (h *AdminHandler) SentinelClusterEditSubmit(w http.ResponseWriter, r *http.
 		}
 
 		// Unregister old, register new.
-		h.store.UnregisterSentinel(ctx, oldName)
+		h.store.DeleteSentinel(ctx, oldName)
 		sentinel := models.NewSentinel(newName, grpName, host, port)
-		h.store.RegisterSentinel(ctx, sentinel)
+		h.store.SaveSentinel(ctx, sentinel)
 	}
 
 	// Alert toggle.
@@ -1446,8 +1446,8 @@ func (h *AdminHandler) DNSProviderEditPage(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-// DNSProviderEditSubmit은 DNS 프로바이더 수정 폼 제출을 처리하고 설정을 암호화하여 저장한다.
-func (h *AdminHandler) DNSProviderEditSubmit(w http.ResponseWriter, r *http.Request) {
+// DNSProviderEditSave는 DNS 프로바이더 수정 폼 제출을 처리하고 설정을 암호화하여 저장한다.
+func (h *AdminHandler) DNSProviderEditSave(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	providerName := r.PathValue("providerName")
 	if err := r.ParseForm(); err != nil {

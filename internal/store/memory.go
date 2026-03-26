@@ -135,8 +135,8 @@ func (m *MemoryStore) ReleaseLock(_ context.Context, key string) error {
 	return nil
 }
 
-// RegisterSentinel은 센티널 노드를 등록한다.
-func (m *MemoryStore) RegisterSentinel(_ context.Context, s *models.Sentinel) error {
+// SaveSentinel은 센티널 노드를 등록한다.
+func (m *MemoryStore) SaveSentinel(_ context.Context, s *models.Sentinel) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -144,8 +144,8 @@ func (m *MemoryStore) RegisterSentinel(_ context.Context, s *models.Sentinel) er
 	return nil
 }
 
-// UnregisterSentinel은 센티널 노드를 제거한다.
-func (m *MemoryStore) UnregisterSentinel(_ context.Context, name string) (bool, error) {
+// DeleteSentinel은 센티널 노드를 제거한다.
+func (m *MemoryStore) DeleteSentinel(_ context.Context, name string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -194,8 +194,8 @@ func (m *MemoryStore) UpdateSentinelLastSeen(_ context.Context, name string, tim
 	return nil
 }
 
-// RegisterCluster는 master_name을 고유 키로 사용하여 클러스터를 등록한다.
-func (m *MemoryStore) RegisterCluster(_ context.Context, c *models.Cluster) error {
+// SaveCluster는 master_name을 고유 키로 사용하여 클러스터를 등록한다.
+func (m *MemoryStore) SaveCluster(_ context.Context, c *models.Cluster) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -203,8 +203,8 @@ func (m *MemoryStore) RegisterCluster(_ context.Context, c *models.Cluster) erro
 	return nil
 }
 
-// UnregisterCluster는 master_name으로 클러스터를 제거한다.
-func (m *MemoryStore) UnregisterCluster(_ context.Context, masterName string) (bool, error) {
+// DeleteCluster는 master_name으로 클러스터를 제거한다.
+func (m *MemoryStore) DeleteCluster(_ context.Context, masterName string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

@@ -85,7 +85,7 @@ func CreateClusterHandler(s store.Store) http.HandlerFunc {
 			}
 		}
 
-		if err := s.RegisterCluster(r.Context(), cluster); err != nil {
+		if err := s.SaveCluster(r.Context(), cluster); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to register cluster")
 			return
 		}
@@ -117,7 +117,7 @@ func GetClusterHandler(s store.Store) http.HandlerFunc {
 func DeleteClusterHandler(s store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		masterName := r.PathValue("masterName")
-		removed, err := s.UnregisterCluster(r.Context(), masterName)
+		removed, err := s.DeleteCluster(r.Context(), masterName)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to delete cluster")
 			return
