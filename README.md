@@ -46,7 +46,7 @@ graph TD
     S3 -.->|monitor| P
 
     SM -->|"config/events"| VK["Storage Valkey<br/>(Sentinel HA)"]
-    SM -->|"DNS Update"| DNS["Route53 / Azure DNS / BIND"]
+    SM -->|"DNS Update"| DNS["Route53 / Azure DNS / Cloudflare / BIND"]
     SM -->|"CLIENT KILL"| P
     SM -->|"Notification"| WH["Slack / Discord / Teams<br/>KakaoWork / Custom"]
 
@@ -89,7 +89,7 @@ Valkey Sentinel Manager is purpose-built for Sentinel operations:
 ## Features
 
 - **DNS-based endpoints** — Auto-create/update `primary-{name}.zone` and `replica-{name}.zone`
-- **Multi-cloud DNS** — AWS Route53, Azure DNS, BIND support
+- **Multi-cloud DNS** — AWS Route53, Azure DNS, Cloudflare, BIND support
 - **DNS-free mode** — Use only Sentinel monitoring + notifications without DNS
 - **Auto failover handling** — Sentinel detection → Quorum check → DNS update → CLIENT KILL → Notification
 - **CLIENT KILL** — Force-close existing client connections on old primary after failover
@@ -212,7 +212,7 @@ sudo systemctl start sentinel-manager
 | Category | Supported |
 |----------|-----------|
 | **Compatibility** | Valkey 7 / 8 / 9 (tested), Redis Sentinel (compatible) |
-| **DNS Providers** | AWS Route53, Azure DNS, BIND REST API |
+| **DNS Providers** | AWS Route53, Azure DNS, Cloudflare, BIND REST API |
 | **Webhooks** | Slack, Discord, Microsoft Teams, Kakao Work, Custom HTTP |
 | **Authentication** | requirepass, Valkey 7+ ACL (username + password) |
 | **Store** | Valkey (Sentinel HA), Memory (dev only) |
@@ -282,7 +282,7 @@ Valkey Sentinel Manager는 Sentinel 운영에 특화된 도구입니다:
 ## 주요 기능
 
 - **DNS 기반 엔드포인트** — `primary-{name}.zone`, `replica-{name}.zone` 자동 생성/갱신
-- **멀티 클라우드 DNS** — AWS Route53, Azure DNS, BIND 지원
+- **멀티 클라우드 DNS** — AWS Route53, Azure DNS, Cloudflare, BIND 지원
 - **DNS 없이 사용 가능** — Sentinel 모니터링 + 알림만 사용
 - **자동 페일오버 처리** — Sentinel 감지 → 쿼럼 판단 → DNS 갱신 → CLIENT KILL → 알림
 - **CLIENT KILL** — 페일오버 후 구 primary의 기존 클라이언트 커넥션 강제 종료
@@ -405,7 +405,7 @@ sudo systemctl start sentinel-manager
 | 분류 | 지원 |
 |------|------|
 | **호환성** | Valkey 7 / 8 / 9 (테스트 완료), Redis Sentinel (호환) |
-| **DNS 프로바이더** | AWS Route53, Azure DNS, BIND REST API |
+| **DNS 프로바이더** | AWS Route53, Azure DNS, Cloudflare, BIND REST API |
 | **Webhook** | Slack, Discord, Microsoft Teams, 카카오워크, Custom HTTP |
 | **인증** | requirepass, Valkey 7+ ACL (username + password) |
 | **저장소** | Valkey (Sentinel HA), Memory (개발용) |

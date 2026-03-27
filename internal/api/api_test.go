@@ -252,3 +252,98 @@ func TestEventCreate(t *testing.T) {
 		t.Fatalf("resp status = %q", resp.Status)
 	}
 }
+
+func TestListEvents(t *testing.T) {
+	mux, _ := setupTestMux()
+
+	// Create an event first.
+	body := `{"group_name":"g1","master_name":"m1","event_type":"failover","from_ip":"10.0.0.1","from_port":6379,"to_ip":"10.0.0.2","to_port":6379,"sentinel_node_name":"s1"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/events", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	authHeader(req)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	// List events.
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/events", nil)
+	authHeader(req)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list events: status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	var resp Response
+	json.NewDecoder(rec.Body).Decode(&resp)
+	if resp.Status != "ok" {
+		t.Fatalf("resp status = %q", resp.Status)
+	}
+}
+
+func TestCreateEvent_InvalidJSON(t *testing.T) {
+	mux, _ := setupTestMux()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/events", bytes.NewBufferString("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	authHeader(req)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestCreateCluster_InvalidJSON(t *testing.T) {
+	mux, _ := setupTestMux()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/clusters", bytes.NewBufferString("{invalid"))
+	req.Header.Set("Content-Type", "application/json")
+	authHeader(req)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestCreateSentinel_InvalidJSON(t *testing.T) {
+	mux, _ := setupTestMux()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sentinels", bytes.NewBufferString("bad"))
+	req.Header.Set("Content-Type", "application/json")
+	authHeader(req)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestDeleteCluster_NotFound(t *testing.T) {
+	mux, _ := setupTestMux()
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/clusters/nonexistent", nil)
+	authHeader(req)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestDeleteSentinel_NotFound(t *testing.T) {
+	mux, _ := setupTestMux()
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/sentinels/nonexistent", nil)
+	authHeader(req)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}

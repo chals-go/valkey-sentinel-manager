@@ -1444,6 +1444,16 @@ func (h *AdminHandler) DNSProviderCreate(w http.ResponseWriter, r *http.Request)
 		cfg["api_url"] = apiURL
 		cfg["zone_name"] = strings.TrimSpace(r.FormValue("bind_zone_name"))
 		cfg["api_key"] = strings.TrimSpace(r.FormValue("bind_api_key"))
+	case "cloudflare":
+		apiToken := strings.TrimSpace(r.FormValue("cf_api_token"))
+		zoneID := strings.TrimSpace(r.FormValue("cf_zone_id"))
+		if apiToken == "" || zoneID == "" {
+			h.render(w, r, "base", PageData{Page: "settings-dns", FlashMessage: t("flash_cloudflare_required"), FlashType: "error"})
+			return
+		}
+		cfg["api_token"] = apiToken
+		cfg["zone_id"] = zoneID
+		cfg["zone_name"] = strings.TrimSpace(r.FormValue("cf_zone_name"))
 	}
 
 	encrypted := h.encryptor.EncryptSensitiveFields(cfg)
@@ -1513,6 +1523,10 @@ func (h *AdminHandler) DNSProviderEditSave(w http.ResponseWriter, r *http.Reques
 		cfg["api_url"] = strings.TrimSpace(r.FormValue("bind_api_url"))
 		cfg["zone_name"] = strings.TrimSpace(r.FormValue("bind_zone_name"))
 		cfg["api_key"] = strings.TrimSpace(r.FormValue("bind_api_key"))
+	case "cloudflare":
+		cfg["api_token"] = strings.TrimSpace(r.FormValue("cf_api_token"))
+		cfg["zone_id"] = strings.TrimSpace(r.FormValue("cf_zone_id"))
+		cfg["zone_name"] = strings.TrimSpace(r.FormValue("cf_zone_name"))
 	}
 
 	encrypted := h.encryptor.EncryptSensitiveFields(cfg)

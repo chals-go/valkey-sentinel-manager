@@ -94,3 +94,92 @@ func TestEncryptSensitiveFields(t *testing.T) {
 		t.Fatalf("decrypted secret_key = %q", decrypted["secret_key"])
 	}
 }
+
+func TestNewEncryptor_EmptyKey(t *testing.T) {
+	// Should not panic; generates a temporary key.
+	enc := NewEncryptor("")
+	if enc == nil {
+		t.Fatal("NewEncryptor('') should not return nil")
+	}
+	// Round-trip should still work with temporary key.
+	encrypted := enc.Encrypt("test")
+	decrypted := enc.Decrypt(encrypted)
+	if decrypted != "test" {
+		t.Fatalf("round-trip failed with temp key: got %q", decrypted)
+	}
+}
+
+func TestNewEncryptor_InvalidKey(t *testing.T) {
+	// Invalid base64 → generates temporary key.
+	enc := NewEncryptor("not-valid-base64!!!")
+	if enc == nil {
+		t.Fatal("NewEncryptor with invalid key should not return nil")
+	}
+	encrypted := enc.Encrypt("test")
+	decrypted := enc.Decrypt(encrypted)
+	if decrypted != "test" {
+		t.Fatalf("round-trip failed with fallback key: got %q", decrypted)
+	}
+}
+
+func TestDecrypt_CorruptedData(t *testing.T) {
+	enc := testEncryptor(t)
+	// Corrupted encrypted data with valid prefix.
+	corrupted := encPrefix + base64.StdEncoding.EncodeToString([]byte("garbage data"))
+	result := enc.Decrypt(corrupted)
+	if result != "" {
+		t.Fatalf("corrupted data should return empty, got %q", result)
+	}
+}
+
+func TestDecrypt_WrongKey(t *testing.T) {
+	enc1 := testEncryptor(t)
+	encrypted := enc1.Encrypt("secret-value")
+
+	// Different key.
+	key2 := make([]byte, 32)
+	for i := range key2 {
+		key2[i] = byte(i + 100)
+	}
+	enc2 := NewEncryptor(base64.StdEncoding.EncodeToString(key2))
+
+	result := enc2.Decrypt(encrypted)
+	if result == "secret-value" {
+		t.Fatal("decrypting with wrong key should not return original value")
+	}
+	if result != "" {
+		t.Fatalf("decrypting with wrong key should return empty, got %q", result)
+	}
+}
+
+func TestEncryptDecrypt_SpecialChars(t *testing.T) {
+	enc := testEncryptor(t)
+	special := "한글テスト🎉 <script>alert('xss')</script> password=p@$$w0rd!"
+	encrypted := enc.Encrypt(special)
+	decrypted := enc.Decrypt(encrypted)
+	if decrypted != special {
+		t.Fatalf("special chars round-trip failed: got %q", decrypted)
+	}
+}
+
+func TestEncryptSensitiveFields_ApiToken(t *testing.T) {
+	enc := testEncryptor(t)
+	cfg := map[string]string{
+		"type":      "cloudflare",
+		"api_token": "cf-token-secret",
+		"zone_id":   "zone123",
+	}
+
+	encrypted := enc.EncryptSensitiveFields(cfg)
+	if !strings.HasPrefix(encrypted["api_token"], encPrefix) {
+		t.Fatal("api_token should be encrypted (Cloudflare field)")
+	}
+	if encrypted["zone_id"] != "zone123" {
+		t.Fatal("zone_id should not be encrypted")
+	}
+
+	decrypted := enc.DecryptSensitiveFields(encrypted)
+	if decrypted["api_token"] != "cf-token-secret" {
+		t.Fatalf("decrypted api_token = %q", decrypted["api_token"])
+	}
+}

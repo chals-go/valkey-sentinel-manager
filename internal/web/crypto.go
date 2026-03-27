@@ -17,6 +17,7 @@ var SensitiveFields = map[string]bool{
 	"secret_key":    true,
 	"client_secret": true,
 	"api_key":       true,
+	"api_token":     true,
 }
 
 // Encryptor는 AES-256-GCM 방식으로 민감한 값의 암호화와 복호화를 처리하는 구조체다.

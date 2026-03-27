@@ -28,6 +28,8 @@ func NewProvider(ctx context.Context, name string, cfg map[string]string) (Provi
 		)
 	case "bind":
 		return NewBINDProvider(cfg["api_url"], cfg["api_key"]), nil
+	case "cloudflare":
+		return NewCloudflareProvider(cfg["api_token"], cfg["zone_id"])
 	default:
 		return nil, fmt.Errorf("unknown DNS provider: %s", name)
 	}
