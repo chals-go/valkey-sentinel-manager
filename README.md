@@ -5,11 +5,11 @@
 >
 > **그냥 Valkey Cluster 모드 쓰세요.** 자동 샤딩, 페일오버, 리밸런싱 다 해줍니다. DNS도 필요 없고, Sentinel도 필요 없고, 이 Manager도 필요 없습니다. 모든 게 해결됩니다.
 
-**Web-based Valkey Sentinel Management & DNS Failover Automation**
+**Web-based Valkey/Redis Sentinel Management & DNS Failover Automation**
 
-Manage Valkey Sentinel clusters through a web UI — register/edit/delete replication groups, monitor sentinel nodes, automate DNS failover, and receive multi-channel notifications.
+Manage Valkey/Redis Sentinel clusters through a web UI — register/edit/delete replication groups, monitor sentinel nodes, automate DNS failover, and receive multi-channel notifications.
 
-Valkey Sentinel 클러스터를 웹 UI로 통합 관리 — Replication Group 등록/수정/삭제, Sentinel 노드 모니터링, DNS 페일오버 자동화, 다채널 알림을 제공하는 시스템.
+Valkey/Redis Sentinel 클러스터를 웹 UI로 통합 관리 — Replication Group 등록/수정/삭제, Sentinel 노드 모니터링, DNS 페일오버 자동화, 다채널 알림을 제공하는 시스템.
 
 [English](#english) | [한국어](#한국어)
 
@@ -63,10 +63,20 @@ graph TD
 
 # English
 
-A web-based management system for Valkey Sentinel that automatically updates DNS records on failover and provides a unified admin UI for monitoring and managing Sentinel clusters.
+A web-based management system for Valkey & Redis Sentinel that automatically updates DNS records on failover and provides a unified admin UI for monitoring and managing Sentinel clusters.
 
 **Single Go binary** — all HTML/CSS/JS/fonts embedded. No extra file deployment needed.
 Sentinel mode only. Cluster mode is not supported.
+
+## Why Valkey Sentinel Manager?
+
+Most existing Sentinel management tools are general-purpose Redis GUIs that merely *connect through* Sentinel — they don't let you **register, edit, or delete** replication groups and sentinel clusters from a web interface.
+
+Valkey Sentinel Manager is purpose-built for Sentinel operations:
+- **Full lifecycle management** — Register, edit, delete, pause/resume replication groups and sentinel clusters via Web UI & REST API
+- **Automated DNS failover** — No manual DNS updates; records change automatically on failover
+- **Multi-channel alerting** — Slack, Discord, Teams, Kakao Work, Custom HTTP
+- **Production-ready** — Quorum-based decisions, distributed locks, CLIENT KILL, encrypted storage
 
 ## Components
 
@@ -201,6 +211,7 @@ sudo systemctl start sentinel-manager
 
 | Category | Supported |
 |----------|-----------|
+| **Compatibility** | Valkey 7 / 8 / 9 (tested), Redis Sentinel (compatible) |
 | **DNS Providers** | AWS Route53, Azure DNS, BIND REST API |
 | **Webhooks** | Slack, Discord, Microsoft Teams, Kakao Work, Custom HTTP |
 | **Authentication** | requirepass, Valkey 7+ ACL (username + password) |
@@ -245,10 +256,20 @@ POST   /api/v1/events            # Create event (called by agent)
 
 # 한국어
 
-Valkey Sentinel 환경에서 primary/replica 장애 발생 시 DNS 레코드를 자동 갱신하고, 웹 UI로 Sentinel 클러스터를 통합 관리하는 시스템.
+Valkey & Redis Sentinel 환경에서 primary/replica 장애 발생 시 DNS 레코드를 자동 갱신하고, 웹 UI로 Sentinel 클러스터를 통합 관리하는 시스템.
 
 **Go 단일 바이너리** — HTML/CSS/JS/폰트 모두 내장. 별도 파일 배포 불필요.
 Sentinel 모드 전용. Cluster 모드는 지원하지 않음.
+
+## 왜 Valkey Sentinel Manager인가?
+
+기존 Sentinel 관련 오픈소스 도구들은 대부분 범용 Redis GUI로, Sentinel을 통해 *접속*만 할 뿐 웹에서 Replication Group이나 Sentinel 클러스터를 **등록/수정/삭제**하는 기능은 제공하지 않습니다.
+
+Valkey Sentinel Manager는 Sentinel 운영에 특화된 도구입니다:
+- **전체 라이프사이클 관리** — 웹 UI & REST API로 Replication Group, Sentinel 클러스터 등록/수정/삭제/일시정지/재개
+- **DNS 페일오버 자동화** — 수동 DNS 변경 불필요, 페일오버 시 레코드 자동 갱신
+- **다중 채널 알림** — Slack, Discord, Teams, 카카오워크, Custom HTTP
+- **프로덕션 검증** — 쿼럼 기반 판단, 분산 락, CLIENT KILL, 암호화 저장
 
 ## 구성 요소
 
@@ -383,6 +404,7 @@ sudo systemctl start sentinel-manager
 
 | 분류 | 지원 |
 |------|------|
+| **호환성** | Valkey 7 / 8 / 9 (테스트 완료), Redis Sentinel (호환) |
 | **DNS 프로바이더** | AWS Route53, Azure DNS, BIND REST API |
 | **Webhook** | Slack, Discord, Microsoft Teams, 카카오워크, Custom HTTP |
 | **인증** | requirepass, Valkey 7+ ACL (username + password) |
