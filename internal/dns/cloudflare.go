@@ -1,3 +1,5 @@
+//go:build !dns_select || dns_cloudflare
+
 package dns
 
 import (
@@ -10,6 +12,12 @@ import (
 	"github.com/cloudflare/cloudflare-go/v4/option"
 	"github.com/cloudflare/cloudflare-go/v4/zones"
 )
+
+func init() {
+	Register("cloudflare", "Cloudflare", func(_ context.Context, cfg map[string]string) (Provider, error) {
+		return NewCloudflareProvider(cfg["api_token"], cfg["zone_id"])
+	})
+}
 
 // CloudflareProvider는 Cloudflare DNS API를 통해 DNS 레코드를 관리하는 프로바이더이다.
 type CloudflareProvider struct {

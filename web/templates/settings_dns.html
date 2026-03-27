@@ -181,16 +181,14 @@
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "provider_type" }}</label>
           <select name="provider_type" id="modal_provider_type" data-toggle-provider class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
-            <option value="route53">Route53</option>
-            <option value="azure">Azure DNS</option>
-            <option value="bind">BIND</option>
-            <option value="cloudflare">Cloudflare</option>
+            {{ range .Data.AvailableProviders }}<option value="{{ .Type }}">{{ .DisplayName }}</option>
+            {{ end }}
           </select>
         </div>
       </div>
 
       <!-- Route53 fields -->
-      <div id="modal-fields-route53">
+      {{ if hasProvider "route53" }}<div id="modal-fields-route53">
         <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">Route53</div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_id" }}</label><input type="text" name="r53_zone_id" placeholder="Z1234567890" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
@@ -208,10 +206,10 @@
           <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "access_key" }}</label><input type="text" name="r53_access_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
           <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "secret_key" }}</label><input type="password" name="r53_secret_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
         </div>
-      </div>
+      </div>{{ end }}
 
       <!-- Azure fields -->
-      <div id="modal-fields-azure" style="display:none">
+      {{ if hasProvider "azure" }}<div id="modal-fields-azure" style="display:none">
         <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">Azure DNS</div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "subscription_id" }}</label><input type="text" name="az_subscription_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
@@ -233,27 +231,27 @@
             <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "client_secret" }}</label><input type="password" name="az_client_secret" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
           </div>
         </div>
-      </div>
+      </div>{{ end }}
 
       <!-- BIND fields -->
-      <div id="modal-fields-bind" style="display:none">
+      {{ if hasProvider "bind" }}<div id="modal-fields-bind" style="display:none">
         <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">BIND</div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "api_url" }}</label><input type="text" name="bind_api_url" placeholder="http://bind-server:8080" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
           <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_name" }}</label><input type="text" name="bind_zone_name" placeholder="example.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
           <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "api_key_optional" }}</label><input type="password" name="bind_api_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
         </div>
-      </div>
+      </div>{{ end }}
 
       <!-- Cloudflare fields -->
-      <div id="modal-fields-cloudflare" style="display:none">
+      {{ if hasProvider "cloudflare" }}<div id="modal-fields-cloudflare" style="display:none">
         <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 pb-2 border-b border-gray-100">Cloudflare</div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div><label class="block text-sm font-medium text-slate-700 mb-1">API Token</label><input type="password" name="cf_api_token" placeholder="Zone:Edit permission required" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
           <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_id" }}</label><input type="text" name="cf_zone_id" placeholder="32-character hex string" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
         </div>
         <div class="mb-4 max-w-sm"><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_name" }}</label><input type="text" name="cf_zone_name" placeholder="example.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
-      </div>
+      </div>{{ end }}
 
       <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
         <button type="button" data-modal-close="modal-dns-new" class="px-4 py-2 bg-white text-slate-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50">{{ t "cancel" }}</button>
@@ -265,10 +263,10 @@
 
 <script>
 function toggleModalProviderFields(type) {
-    document.getElementById('modal-fields-route53').style.display = type === 'route53' ? '' : 'none';
-    document.getElementById('modal-fields-azure').style.display = type === 'azure' ? '' : 'none';
-    document.getElementById('modal-fields-bind').style.display = type === 'bind' ? '' : 'none';
-    document.getElementById('modal-fields-cloudflare').style.display = type === 'cloudflare' ? '' : 'none';
+    ['route53', 'azure', 'bind', 'cloudflare'].forEach(function(id) {
+        var el = document.getElementById('modal-fields-' + id);
+        if (el) el.style.display = type === id ? '' : 'none';
+    });
 }
 function toggleModalAzureAuth(authType) {
     var show = authType === 'user_identity' || authType === 'service_principal';

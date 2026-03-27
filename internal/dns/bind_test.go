@@ -1,3 +1,5 @@
+//go:build !dns_select || dns_bind
+
 package dns
 
 import (

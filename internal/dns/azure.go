@@ -1,3 +1,5 @@
+//go:build !dns_select || dns_azure
+
 package dns
 
 import (
@@ -9,6 +11,15 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/dns/armdns"
 )
+
+func init() {
+	Register("azure", "Azure DNS", func(_ context.Context, cfg map[string]string) (Provider, error) {
+		return NewAzureProvider(
+			cfg["subscription_id"], cfg["resource_group"], cfg["zone_name"],
+			cfg["auth_type"], cfg["client_id"], cfg["client_secret"], cfg["tenant_id"],
+		)
+	})
+}
 
 // AzureProvider는 Azure DNS를 통해 DNS 레코드를 관리하는 프로바이더이다.
 type AzureProvider struct {

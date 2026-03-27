@@ -1,3 +1,5 @@
+//go:build !dns_select || dns_cloudflare
+
 package dns
 
 import (

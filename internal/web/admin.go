@@ -1390,7 +1390,11 @@ func (h *AdminHandler) SettingsDNS(w http.ResponseWriter, r *http.Request) {
 
 	h.render(w, r, "base", PageData{
 		Page: "settings-dns",
-		Data: map[string]any{"Configs": configs, "DNSStatus": dnsStatus},
+		Data: map[string]any{
+			"Configs":            configs,
+			"DNSStatus":          dnsStatus,
+			"AvailableProviders": dns.AvailableProviders(),
+		},
 	})
 }
 
@@ -1405,6 +1409,14 @@ func (h *AdminHandler) DNSProviderCreate(w http.ResponseWriter, r *http.Request)
 
 	providerName := strings.TrimSpace(r.FormValue("provider_name"))
 	providerType := strings.TrimSpace(r.FormValue("provider_type"))
+
+	if !dns.IsProviderAvailable(providerType) {
+		h.render(w, r, "base", PageData{
+			Page: "settings-dns", FlashMessage: t("flash_provider_not_available"), FlashType: "error",
+			Data: map[string]any{"AvailableProviders": dns.AvailableProviders()},
+		})
+		return
+	}
 
 	cfg := map[string]string{"type": providerType}
 

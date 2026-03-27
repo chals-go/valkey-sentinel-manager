@@ -1,3 +1,5 @@
+//go:build !dns_select || dns_bind
+
 package dns
 
 import (
@@ -11,6 +13,12 @@ import (
 	"strings"
 	"time"
 )
+
+func init() {
+	Register("bind", "BIND", func(_ context.Context, cfg map[string]string) (Provider, error) {
+		return NewBINDProvider(cfg["api_url"], cfg["api_key"]), nil
+	})
+}
 
 // BINDProvider는 BIND REST API를 통해 DNS 레코드를 관리하는 프로바이더이다.
 type BINDProvider struct {

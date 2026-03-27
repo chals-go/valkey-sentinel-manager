@@ -1,3 +1,5 @@
+//go:build !dns_select || dns_route53
+
 package dns
 
 import (
@@ -12,6 +14,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/route53/types"
 )
+
+func init() {
+	Register("route53", "Route53", func(ctx context.Context, cfg map[string]string) (Provider, error) {
+		return NewRoute53Provider(ctx, cfg["zone_id"], cfg["region"], cfg["access_key"], cfg["secret_key"])
+	})
+}
 
 // Route53Provider는 AWS Route53을 통해 DNS 레코드를 관리하는 프로바이더이다.
 type Route53Provider struct {

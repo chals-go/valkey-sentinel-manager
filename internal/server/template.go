@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/chals-go/valkey-sentinel-manager/internal/dns"
 )
 
 // monitoringPages는 자동 새로고침 컨트롤을 표시하는 페이지 목록을 정의한다.
@@ -45,7 +47,8 @@ func TemplateFuncMap(t func(string) string) template.FuncMap {
 			}
 			return value
 		},
-		"contains": strings.Contains,
+		"hasProvider": dns.IsProviderAvailable,
+		"contains":    strings.Contains,
 		"replace": func(s, old, new string) string { return strings.Replace(s, old, new, 1) },
 		"sliceContains": func(slice []string, val string) bool {
 			for _, s := range slice {

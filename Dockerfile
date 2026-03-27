@@ -1,11 +1,15 @@
 FROM golang:1.24-alpine AS builder
 
+ARG DNS_BUILD_TAGS=""
+
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /sentinel-manager ./cmd/sentinel-manager
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" \
+    ${DNS_BUILD_TAGS:+-tags "${DNS_BUILD_TAGS}"} \
+    -o /sentinel-manager ./cmd/sentinel-manager
 
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata

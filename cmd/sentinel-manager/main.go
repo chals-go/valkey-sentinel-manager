@@ -163,13 +163,18 @@ func main() {
 	dnsConfigs, _ := st.ListDNSProviderConfigs(ctx)
 	for name, rawCfg := range dnsConfigs {
 		decrypted := enc.DecryptSensitiveFields(rawCfg)
-		p, err := dns.NewProvider(ctx, decrypted["type"], decrypted)
+		providerType := decrypted["type"]
+		if !dns.IsProviderAvailable(providerType) {
+			slog.Warn("DNS provider not available in this build, skipping", "name", name, "type", providerType)
+			continue
+		}
+		p, err := dns.NewProvider(ctx, providerType, decrypted)
 		if err != nil {
 			slog.Warn("failed to init DNS provider", "name", name, "error", err)
 			continue
 		}
 		dnsProviders[name] = p
-		slog.Info("DNS provider loaded", "name", name, "type", decrypted["type"])
+		slog.Info("DNS provider loaded", "name", name, "type", providerType)
 	}
 
 	// Migrate legacy Slack webhook to new webhook system.
