@@ -635,7 +635,7 @@
   var params = new URLSearchParams(window.location.search);
   var expand = params.get('expand');
   if (expand) {
-    var row = document.querySelector('[data-master-name="' + expand + '"]');
+    var row = document.querySelector('[data-master-name="' + CSS.escape(expand) + '"]');
     if (row) {
       var detailId = row.getAttribute('data-toggle-detail');
       var detail = document.getElementById(detailId);

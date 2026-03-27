@@ -254,7 +254,9 @@ func (fm *FailoverManager) handleReplicaDown(ctx context.Context, cluster *model
 	} else {
 		// Sentinel query failed — fallback: remove specific IP.
 		slog.Info("sentinel query failed, fallback remove", "ip", event.FromIP)
-		provider.RemoveRecordValue(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, event.FromIP)
+		if err := provider.RemoveRecordValue(ctx, rdns.Zone, rdns.RecordName, rdns.RecordType, event.FromIP); err != nil {
+			slog.Error("failed to remove replica DNS record", "ip", event.FromIP, "error", err)
+		}
 	}
 }
 

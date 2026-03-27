@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	neturl "net/url"
 	"strings"
 	"time"
 )
@@ -137,7 +138,7 @@ func (p *BINDProvider) AddRecordValue(ctx context.Context, zone, name, recordTyp
 
 // RemoveRecordValue는 BIND REST API를 통해 다중 값 DNS 레코드에서 특정 값을 제거한다.
 func (p *BINDProvider) RemoveRecordValue(ctx context.Context, zone, name, recordType, value string) error {
-	url := p.recordURL(zone, name, recordType) + "?value=" + value
+	url := p.recordURL(zone, name, recordType) + "?value=" + neturl.QueryEscape(value)
 	resp, err := p.doRequest(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return fmt.Errorf("bind remove record value: %w", err)

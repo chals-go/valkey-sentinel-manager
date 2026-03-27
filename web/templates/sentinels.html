@@ -19,7 +19,7 @@
       {{ if eq $connCount (len $nodes) }}
       <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ t "all_connected" }}</span>
       {{ else if gt $connCount 0 }}
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ $connCount }}/{{ len $nodes }} Connected</span>
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{{ $connCount }}/{{ len $nodes }} {{ t "partial_connected" }}</span>
       {{ else }}
       <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ t "disconnected" }}</span>
       {{ end }}
