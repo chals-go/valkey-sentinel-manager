@@ -10,8 +10,8 @@ type ProviderFactory func(ctx context.Context, cfg map[string]string) (Provider,
 
 // ProviderInfo는 사용 가능한 DNS Provider의 메타 정보이다.
 type ProviderInfo struct {
-	Type        string // "route53", "azure", "bind", "cloudflare"
-	DisplayName string // "Route53", "Azure DNS", "BIND", "Cloudflare"
+	Type        string // "route53", "azure", "restapi", "cloudflare"
+	DisplayName string // "Route53", "Azure DNS", "REST API", "Cloudflare"
 }
 
 var (

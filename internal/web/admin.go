@@ -1447,15 +1447,31 @@ func (h *AdminHandler) DNSProviderCreate(w http.ResponseWriter, r *http.Request)
 		cfg["client_id"] = strings.TrimSpace(r.FormValue("az_client_id"))
 		cfg["client_secret"] = strings.TrimSpace(r.FormValue("az_client_secret"))
 		cfg["tenant_id"] = strings.TrimSpace(r.FormValue("az_tenant_id"))
-	case "bind":
-		apiURL := strings.TrimSpace(r.FormValue("bind_api_url"))
-		if apiURL == "" {
-			h.render(w, r, "base", PageData{Page: "settings-dns", FlashMessage: t("flash_api_url_required"), FlashType: "error"})
+	case "restapi":
+		baseURL := strings.TrimSpace(r.FormValue("rest_base_url"))
+		updateMethod := strings.TrimSpace(r.FormValue("rest_update_method"))
+		updateURL := strings.TrimSpace(r.FormValue("rest_update_url"))
+		updateBody := strings.TrimSpace(r.FormValue("rest_update_body"))
+		if baseURL == "" || updateMethod == "" || updateURL == "" || updateBody == "" {
+			h.render(w, r, "base", PageData{
+				Page: "settings-dns", FlashMessage: t("flash_restapi_required"), FlashType: "error",
+				Data: map[string]any{"AvailableProviders": dns.AvailableProviders()},
+			})
 			return
 		}
-		cfg["api_url"] = apiURL
-		cfg["zone_name"] = strings.TrimSpace(r.FormValue("bind_zone_name"))
-		cfg["api_key"] = strings.TrimSpace(r.FormValue("bind_api_key"))
+		cfg["base_url"] = baseURL
+		cfg["headers"] = strings.TrimSpace(r.FormValue("rest_headers"))
+		cfg["update_method"] = updateMethod
+		cfg["update_url"] = updateURL
+		cfg["update_body"] = updateBody
+		cfg["update_multi_method"] = strings.TrimSpace(r.FormValue("rest_update_multi_method"))
+		cfg["update_multi_url"] = strings.TrimSpace(r.FormValue("rest_update_multi_url"))
+		cfg["update_multi_body"] = strings.TrimSpace(r.FormValue("rest_update_multi_body"))
+		cfg["delete_method"] = strings.TrimSpace(r.FormValue("rest_delete_method"))
+		cfg["delete_url"] = strings.TrimSpace(r.FormValue("rest_delete_url"))
+		cfg["delete_body"] = strings.TrimSpace(r.FormValue("rest_delete_body"))
+		cfg["health_method"] = strings.TrimSpace(r.FormValue("rest_health_method"))
+		cfg["health_url"] = strings.TrimSpace(r.FormValue("rest_health_url"))
 	case "cloudflare":
 		apiToken := strings.TrimSpace(r.FormValue("cf_api_token"))
 		zoneID := strings.TrimSpace(r.FormValue("cf_zone_id"))
@@ -1500,6 +1516,7 @@ func (h *AdminHandler) DNSProviderEditPage(w http.ResponseWriter, r *http.Reques
 			"ResourceGroup":  cfg["resource_group"],
 			"AuthType":       cfg["auth_type"],
 			"APIURL":         cfg["api_url"],
+			"Config":         cfg,
 		},
 	})
 }
@@ -1531,10 +1548,20 @@ func (h *AdminHandler) DNSProviderEditSave(w http.ResponseWriter, r *http.Reques
 		cfg["client_id"] = strings.TrimSpace(r.FormValue("az_client_id"))
 		cfg["client_secret"] = strings.TrimSpace(r.FormValue("az_client_secret"))
 		cfg["tenant_id"] = strings.TrimSpace(r.FormValue("az_tenant_id"))
-	case "bind":
-		cfg["api_url"] = strings.TrimSpace(r.FormValue("bind_api_url"))
-		cfg["zone_name"] = strings.TrimSpace(r.FormValue("bind_zone_name"))
-		cfg["api_key"] = strings.TrimSpace(r.FormValue("bind_api_key"))
+	case "restapi":
+		cfg["base_url"] = strings.TrimSpace(r.FormValue("rest_base_url"))
+		cfg["headers"] = strings.TrimSpace(r.FormValue("rest_headers"))
+		cfg["update_method"] = strings.TrimSpace(r.FormValue("rest_update_method"))
+		cfg["update_url"] = strings.TrimSpace(r.FormValue("rest_update_url"))
+		cfg["update_body"] = strings.TrimSpace(r.FormValue("rest_update_body"))
+		cfg["update_multi_method"] = strings.TrimSpace(r.FormValue("rest_update_multi_method"))
+		cfg["update_multi_url"] = strings.TrimSpace(r.FormValue("rest_update_multi_url"))
+		cfg["update_multi_body"] = strings.TrimSpace(r.FormValue("rest_update_multi_body"))
+		cfg["delete_method"] = strings.TrimSpace(r.FormValue("rest_delete_method"))
+		cfg["delete_url"] = strings.TrimSpace(r.FormValue("rest_delete_url"))
+		cfg["delete_body"] = strings.TrimSpace(r.FormValue("rest_delete_body"))
+		cfg["health_method"] = strings.TrimSpace(r.FormValue("rest_health_method"))
+		cfg["health_url"] = strings.TrimSpace(r.FormValue("rest_health_url"))
 	case "cloudflare":
 		cfg["api_token"] = strings.TrimSpace(r.FormValue("cf_api_token"))
 		cfg["zone_id"] = strings.TrimSpace(r.FormValue("cf_zone_id"))

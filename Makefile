@@ -1,5 +1,5 @@
 .PHONY: build build-manager build-agent clean test vet lint run \
-       build-dns-aws build-dns-azure build-dns-cloudflare build-dns-bind
+       build-dns-aws build-dns-azure build-dns-cloudflare build-dns-restapi
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS = -s -w -X main.version=$(VERSION)
@@ -23,8 +23,8 @@ build-dns-azure:
 build-dns-cloudflare:
 	CGO_ENABLED=0 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -tags "dns_select,dns_cloudflare" -o bin/sentinel-manager ./cmd/sentinel-manager
 
-build-dns-bind:
-	CGO_ENABLED=0 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -tags "dns_select,dns_bind" -o bin/sentinel-manager ./cmd/sentinel-manager
+build-dns-restapi:
+	CGO_ENABLED=0 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -tags "dns_select,dns_restapi" -o bin/sentinel-manager ./cmd/sentinel-manager
 
 clean:
 	rm -rf bin/

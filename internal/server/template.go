@@ -65,6 +65,7 @@ func TemplateFuncMap(t func(string) string) template.FuncMap {
 			}
 			return s
 		},
+		"slice": func(args ...string) []string { return args },
 		"csrfToken": func() string { return "" },
 		"toJSON": func(v any) template.JS {
 			b, _ := json.Marshal(v)

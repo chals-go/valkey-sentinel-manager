@@ -1,4 +1,4 @@
-// Package dns는 Route53, Azure DNS, BIND 등 다양한 DNS 프로바이더를 통한 DNS 레코드 관리를 제공한다.
+// Package dns는 Route53, Azure DNS, REST API 등 다양한 DNS 프로바이더를 통한 DNS 레코드 관리를 제공한다.
 package dns
 
 import "context"

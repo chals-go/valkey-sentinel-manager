@@ -75,20 +75,37 @@
       </script>
       {{ end }}
 
-      {{ if eq .Data.ProviderType "bind" }}
+      {{ if eq .Data.ProviderType "restapi" }}
+      {{ $cfg := .Data.Config }}
       <div class="space-y-4 mb-6">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "api_url" }}</label>
-          <input type="text" name="bind_api_url" value="{{ .Data.APIURL }}" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "base_url" }}</label><input type="text" name="rest_base_url" value="{{ index $cfg "base_url" }}" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "custom_headers" }} <span class="text-slate-400 font-normal">(JSON)</span></label><input type="text" name="rest_headers" value="{{ index $cfg "headers" }}" placeholder='{"Authorization":"Bearer xxx"}' class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "zone_name" }}</label>
-          <input type="text" name="bind_zone_name" value="{{ .Data.ZoneName }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mt-4 mb-2">{{ t "update_record" }} <span class="text-indigo-500">({{ t "required_field" }})</span></div>
+        <div class="grid grid-cols-[120px_1fr] gap-4">
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "method" }}</label><select name="rest_update_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">{{ range $m := slice "PUT" "POST" "PATCH" }}<option{{ if eq $m (index $cfg "update_method") }} selected{{ end }}>{{ $m }}</option>{{ end }}</select></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "url_path" }}</label><input type="text" name="rest_update_url" value="{{ index $cfg "update_url" }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">{{ t "api_key_optional" }}</label>
-          <input type="password" name="bind_api_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none" placeholder="Leave blank to keep current">
+        <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "request_body" }}</label><textarea name="rest_update_body" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">{{ index $cfg "update_body" }}</textarea></div>
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mt-4 mb-2">{{ t "update_records_multi" }} <span class="text-slate-400 font-normal">({{ t "optional_multi_ip" }})</span></div>
+        <div class="grid grid-cols-[120px_1fr] gap-4">
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "method" }}</label><select name="rest_update_multi_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"><option value="">—</option>{{ range $m := slice "PUT" "POST" "PATCH" }}<option{{ if eq $m (index $cfg "update_multi_method") }} selected{{ end }}>{{ $m }}</option>{{ end }}</select></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "url_path" }}</label><input type="text" name="rest_update_multi_url" value="{{ index $cfg "update_multi_url" }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
         </div>
+        <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "request_body" }}</label><textarea name="rest_update_multi_body" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">{{ index $cfg "update_multi_body" }}</textarea></div>
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mt-4 mb-2">{{ t "delete_record_value" }} <span class="text-slate-400 font-normal">({{ t "optional_field" }})</span></div>
+        <div class="grid grid-cols-[120px_1fr] gap-4">
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "method" }}</label><select name="rest_delete_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"><option value="">—</option>{{ range $m := slice "DELETE" "POST" "PUT" }}<option{{ if eq $m (index $cfg "delete_method") }} selected{{ end }}>{{ $m }}</option>{{ end }}</select></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "url_path" }}</label><input type="text" name="rest_delete_url" value="{{ index $cfg "delete_url" }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        </div>
+        <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "request_body" }}</label><textarea name="rest_delete_body" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">{{ index $cfg "delete_body" }}</textarea></div>
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mt-4 mb-2">{{ t "health_check" }} <span class="text-slate-400 font-normal">({{ t "optional_field" }})</span></div>
+        <div class="grid grid-cols-[120px_1fr] gap-4">
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "method" }}</label><select name="rest_health_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"><option value="">—</option>{{ range $m := slice "GET" "HEAD" }}<option{{ if eq $m (index $cfg "health_method") }} selected{{ end }}>{{ $m }}</option>{{ end }}</select></div>
+          <div><label class="block text-sm font-medium text-slate-700 mb-1">{{ t "url_path" }}</label><input type="text" name="rest_health_url" value="{{ index $cfg "health_url" }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"></div>
+        </div>
+        <div class="mt-3 p-3 bg-slate-50 rounded-lg"><p class="text-xs text-slate-500"><strong>{{ t "available_variables" }}:</strong> <code class="text-indigo-600">$domain</code> <code class="text-indigo-600">$name</code> <code class="text-indigo-600">$zone</code> <code class="text-indigo-600">$record_type</code> <code class="text-indigo-600">$ip</code> <code class="text-indigo-600">$ips</code> <code class="text-indigo-600">$ttl</code></p></div>
       </div>
       {{ end }}
 

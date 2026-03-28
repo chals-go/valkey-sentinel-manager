@@ -5,19 +5,21 @@ import (
 	"testing"
 )
 
-func TestNewProvider_Bind(t *testing.T) {
-	if !IsProviderAvailable("bind") {
-		t.Skip("bind provider not included in build")
+func TestNewProvider_RestAPI(t *testing.T) {
+	if !IsProviderAvailable("restapi") {
+		t.Skip("restapi provider not included in build")
 	}
-	p, err := NewProvider(context.Background(), "bind", map[string]string{
-		"api_url": "http://localhost:8053",
-		"api_key": "test-key",
+	p, err := NewProvider(context.Background(), "restapi", map[string]string{
+		"base_url":      "http://localhost:8053",
+		"update_method": "PUT",
+		"update_url":    "/api/record",
+		"update_body":   `{"ip":"$ip"}`,
 	})
 	if err != nil {
-		t.Fatalf("bind: unexpected error: %v", err)
+		t.Fatalf("restapi: unexpected error: %v", err)
 	}
 	if p == nil {
-		t.Fatal("bind: provider should not be nil")
+		t.Fatal("restapi: provider should not be nil")
 	}
 }
 
