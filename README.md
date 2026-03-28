@@ -252,6 +252,18 @@ POST   /api/v1/events            # Create event (called by agent)
 | Security | AES-256-GCM, CSRF, Bearer token, brute-force defense |
 | UI | Tailwind CSS, Plus Jakarta Sans (local woff2) |
 
+## Docker Test Environment
+
+A full test environment with 16 containers (Valkey 7/8/8.1, Sentinel clusters, Mock DNS, Sentinel Manager).
+
+```bash
+cd docker-test
+bash start.sh
+# → http://localhost:8000/admin/ (admin / admin)
+```
+
+See [docker-test/README.md](docker-test/README.md) for details.
+
 ---
 
 # 한국어
@@ -488,18 +500,6 @@ valkey-sentinel-manager/
 ├── Dockerfile
 └── Dockerfile.agent
 ```
-
-## Docker Test Environment
-
-A full test environment with 16 containers (Valkey 7/8/8.1, Sentinel clusters, Mock DNS, Sentinel Manager).
-
-```bash
-cd docker-test
-bash start.sh
-# → http://localhost:8000/admin/ (admin / admin)
-```
-
-See [docker-test/README.md](docker-test/README.md) for details.
 
 ## Development / 개발
 
