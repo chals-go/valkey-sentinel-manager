@@ -1,0 +1,16 @@
+host: "0.0.0.0"
+port: 8000
+debug: true
+secure_cookie: false
+
+store_type: "valkey"
+store_url: "valkey://store-valkey:6379/0"
+
+event_dedup_window_seconds: 10
+quorum_threshold: 2
+
+dns_default_ttl: 3
+dns_retry_count: 3
+dns_retry_base_delay: 1.0
+
+encryption_key: ""

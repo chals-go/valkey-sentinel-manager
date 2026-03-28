@@ -1,0 +1,247 @@
+####################################################################
+# Valkey Sentinel Manager — Full Test Environment
+#
+# Sentinel Cluster A (3 sentinels) → monitors: mymaster-v7
+# Sentinel Cluster B (3 sentinels) → monitors: mymaster-v8, mymaster-v8x
+#
+# Valkey 7.2: 1 primary + 2 replicas  (mymaster-v7)
+# Valkey 8.0: 1 primary + 1 replica   (mymaster-v8)
+# Valkey 8.1: 1 primary + 1 replica   (mymaster-v8x)
+#
+# Mock DNS REST API + Sentinel Manager (all providers)
+####################################################################
+
+services:
+
+  # ============================================================
+  # Storage Valkey (for Sentinel Manager data)
+  # ============================================================
+  store-valkey:
+    image: valkey/valkey:8.0
+    container_name: store-valkey
+    command: valkey-server --appendonly yes
+    networks: [smgr-net]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  # ============================================================
+  # Setup: write API token to store-valkey + shared volume
+  # ============================================================
+  setup:
+    image: valkey/valkey:8.0
+    container_name: setup
+    volumes:
+      - ./setup.sh:/setup.sh:ro
+      - shared:/shared
+    entrypoint: ["sh", "/setup.sh"]
+    depends_on:
+      store-valkey: { condition: service_healthy }
+    networks: [smgr-net]
+
+  # ============================================================
+  # Valkey 7.2 — 1 Primary + 2 Replicas (mymaster-v7)
+  # ============================================================
+  valkey7-primary:
+    image: valkey/valkey:7.2
+    container_name: valkey7-primary
+    command: valkey-server --appendonly yes
+    networks: [smgr-net]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  valkey7-replica1:
+    image: valkey/valkey:7.2
+    container_name: valkey7-replica1
+    command: valkey-server --replicaof valkey7-primary 6379
+    depends_on:
+      valkey7-primary: { condition: service_healthy }
+    networks: [smgr-net]
+
+  valkey7-replica2:
+    image: valkey/valkey:7.2
+    container_name: valkey7-replica2
+    command: valkey-server --replicaof valkey7-primary 6379
+    depends_on:
+      valkey7-primary: { condition: service_healthy }
+    networks: [smgr-net]
+
+  # ============================================================
+  # Valkey 8.0 — 1 Primary + 1 Replica (mymaster-v8)
+  # ============================================================
+  valkey8-primary:
+    image: valkey/valkey:8.0
+    container_name: valkey8-primary
+    command: valkey-server --appendonly yes
+    networks: [smgr-net]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  valkey8-replica1:
+    image: valkey/valkey:8.0
+    container_name: valkey8-replica1
+    command: valkey-server --replicaof valkey8-primary 6379
+    depends_on:
+      valkey8-primary: { condition: service_healthy }
+    networks: [smgr-net]
+
+  # ============================================================
+  # Valkey 8.1 — 1 Primary + 1 Replica (mymaster-v8x)
+  # ============================================================
+  valkey8x-primary:
+    image: valkey/valkey:8.1
+    container_name: valkey8x-primary
+    command: valkey-server --appendonly yes
+    networks: [smgr-net]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  valkey8x-replica1:
+    image: valkey/valkey:8.1
+    container_name: valkey8x-replica1
+    command: valkey-server --replicaof valkey8x-primary 6379
+    depends_on:
+      valkey8x-primary: { condition: service_healthy }
+    networks: [smgr-net]
+
+  # ============================================================
+  # Mock DNS REST API
+  # ============================================================
+  mock-dns:
+    build:
+      context: ./mock-dns
+    container_name: mock-dns
+    networks: [smgr-net]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/health"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  # ============================================================
+  # Sentinel Manager (all DNS providers)
+  # ============================================================
+  sentinel-manager:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: sentinel-manager
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./manager-config.yaml:/etc/sentinel-manager/config.yaml:ro
+    depends_on:
+      store-valkey: { condition: service_healthy }
+      setup: { condition: service_completed_successfully }
+      mock-dns: { condition: service_healthy }
+    networks: [smgr-net]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8000/api/v1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  # ============================================================
+  # Sentinel Cluster A — monitors mymaster-v7
+  # ============================================================
+  sentinel-a1: &sentinel-a
+    build:
+      context: ..
+      dockerfile: docker-test/sentinel/Dockerfile
+      args:
+        VALKEY_VERSION: "7.2"
+    container_name: sentinel-a1
+    environment:
+      SENTINEL_MASTERS: "mymaster-v7:valkey7-primary:6379"
+      SENTINEL_QUORUM: "2"
+      SMGR_MONITOR_URL: "http://sentinel-manager:8000"
+      SMGR_GROUP_NAME: "cluster-a"
+      SMGR_SENTINEL_NODE_NAME: "sentinel-a1"
+    volumes:
+      - shared:/shared:ro
+    depends_on:
+      valkey7-primary: { condition: service_healthy }
+      sentinel-manager: { condition: service_healthy }
+    networks: [smgr-net]
+
+  sentinel-a2:
+    <<: *sentinel-a
+    container_name: sentinel-a2
+    environment:
+      SENTINEL_MASTERS: "mymaster-v7:valkey7-primary:6379"
+      SENTINEL_QUORUM: "2"
+      SMGR_MONITOR_URL: "http://sentinel-manager:8000"
+      SMGR_GROUP_NAME: "cluster-a"
+      SMGR_SENTINEL_NODE_NAME: "sentinel-a2"
+
+  sentinel-a3:
+    <<: *sentinel-a
+    container_name: sentinel-a3
+    environment:
+      SENTINEL_MASTERS: "mymaster-v7:valkey7-primary:6379"
+      SENTINEL_QUORUM: "2"
+      SMGR_MONITOR_URL: "http://sentinel-manager:8000"
+      SMGR_GROUP_NAME: "cluster-a"
+      SMGR_SENTINEL_NODE_NAME: "sentinel-a3"
+
+  # ============================================================
+  # Sentinel Cluster B — monitors mymaster-v8, mymaster-v8x
+  # ============================================================
+  sentinel-b1: &sentinel-b
+    build:
+      context: ..
+      dockerfile: docker-test/sentinel/Dockerfile
+      args:
+        VALKEY_VERSION: "8.0"
+    container_name: sentinel-b1
+    environment:
+      SENTINEL_MASTERS: "mymaster-v8:valkey8-primary:6379,mymaster-v8x:valkey8x-primary:6379"
+      SENTINEL_QUORUM: "2"
+      SMGR_MONITOR_URL: "http://sentinel-manager:8000"
+      SMGR_GROUP_NAME: "cluster-b"
+      SMGR_SENTINEL_NODE_NAME: "sentinel-b1"
+    volumes:
+      - shared:/shared:ro
+    depends_on:
+      valkey8-primary: { condition: service_healthy }
+      valkey8x-primary: { condition: service_healthy }
+      sentinel-manager: { condition: service_healthy }
+    networks: [smgr-net]
+
+  sentinel-b2:
+    <<: *sentinel-b
+    container_name: sentinel-b2
+    environment:
+      SENTINEL_MASTERS: "mymaster-v8:valkey8-primary:6379,mymaster-v8x:valkey8x-primary:6379"
+      SENTINEL_QUORUM: "2"
+      SMGR_MONITOR_URL: "http://sentinel-manager:8000"
+      SMGR_GROUP_NAME: "cluster-b"
+      SMGR_SENTINEL_NODE_NAME: "sentinel-b2"
+
+  sentinel-b3:
+    <<: *sentinel-b
+    container_name: sentinel-b3
+    environment:
+      SENTINEL_MASTERS: "mymaster-v8:valkey8-primary:6379,mymaster-v8x:valkey8x-primary:6379"
+      SENTINEL_QUORUM: "2"
+      SMGR_MONITOR_URL: "http://sentinel-manager:8000"
+      SMGR_GROUP_NAME: "cluster-b"
+      SMGR_SENTINEL_NODE_NAME: "sentinel-b3"
+
+volumes:
+  shared:
+
+networks:
+  smgr-net:
+    driver: bridge

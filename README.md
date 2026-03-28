@@ -445,6 +445,18 @@ POST   /api/v1/events            # 이벤트 수신 (Agent 호출)
 | 보안 | AES-256-GCM, CSRF, Bearer 토큰, 브루트포스 방어 |
 | UI | Tailwind CSS, Plus Jakarta Sans (로컬 woff2) |
 
+## Docker 테스트 환경
+
+16개 컨테이너 (Valkey 7/8/8.1, Sentinel 클러스터, Mock DNS, Sentinel Manager)로 구성된 테스트 환경.
+
+```bash
+cd docker-test
+bash start.sh
+# → http://localhost:8000/admin/ (admin / admin)
+```
+
+자세한 내용은 [docker-test/README.md](docker-test/README.md)를 참고하세요.
+
 ---
 
 ## Project Structure / 프로젝트 구조
@@ -467,6 +479,7 @@ valkey-sentinel-manager/
 ├── web/
 │   ├── templates/            # Go html/template (15+ pages)
 │   └── static/               # CSS, JS, fonts (embedded)
+├── docker-test/              # Docker Compose test environment (16 containers)
 ├── deploy/
 │   └── install.sh            # Unified install script
 ├── config.yaml.example
@@ -475,6 +488,18 @@ valkey-sentinel-manager/
 ├── Dockerfile
 └── Dockerfile.agent
 ```
+
+## Docker Test Environment
+
+A full test environment with 16 containers (Valkey 7/8/8.1, Sentinel clusters, Mock DNS, Sentinel Manager).
+
+```bash
+cd docker-test
+bash start.sh
+# → http://localhost:8000/admin/ (admin / admin)
+```
+
+See [docker-test/README.md](docker-test/README.md) for details.
 
 ## Development / 개발
 
