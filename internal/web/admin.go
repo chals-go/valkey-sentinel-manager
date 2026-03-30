@@ -1484,11 +1484,11 @@ func (h *AdminHandler) DNSProviderCreate(w http.ResponseWriter, r *http.Request)
 		cfg["zone_name"] = strings.TrimSpace(r.FormValue("cf_zone_name"))
 	}
 
-	encrypted := h.encryptor.EncryptSensitiveFields(cfg)
+	encrypted := h.encryptor.EncryptAllFields(cfg)
 	h.store.SaveDNSProviderConfig(ctx, providerName, encrypted)
 
 	// Reload provider instance.
-	decrypted := h.encryptor.DecryptSensitiveFields(encrypted)
+	decrypted := h.encryptor.DecryptAllFields(encrypted)
 	if p, err := dns.NewProvider(ctx, decrypted["type"], decrypted); err == nil {
 		h.dnsProviders[providerName] = p
 	}
@@ -1568,10 +1568,10 @@ func (h *AdminHandler) DNSProviderEditSave(w http.ResponseWriter, r *http.Reques
 		cfg["zone_name"] = strings.TrimSpace(r.FormValue("cf_zone_name"))
 	}
 
-	encrypted := h.encryptor.EncryptSensitiveFields(cfg)
+	encrypted := h.encryptor.EncryptAllFields(cfg)
 	h.store.SaveDNSProviderConfig(ctx, providerName, encrypted)
 
-	decrypted := h.encryptor.DecryptSensitiveFields(encrypted)
+	decrypted := h.encryptor.DecryptAllFields(encrypted)
 	if p, err := dns.NewProvider(ctx, decrypted["type"], decrypted); err == nil {
 		h.dnsProviders[providerName] = p
 	}

@@ -162,7 +162,7 @@ func main() {
 	dnsProviders := make(map[string]dns.Provider)
 	dnsConfigs, _ := st.ListDNSProviderConfigs(ctx)
 	for name, rawCfg := range dnsConfigs {
-		decrypted := enc.DecryptSensitiveFields(rawCfg)
+		decrypted := enc.DecryptAllFields(rawCfg)
 		providerType := decrypted["type"]
 		if !dns.IsProviderAvailable(providerType) {
 			slog.Warn("DNS provider not available in this build, skipping", "name", name, "type", providerType)

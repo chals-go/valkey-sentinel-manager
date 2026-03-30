@@ -123,3 +123,29 @@ func (e *Encryptor) DecryptSensitiveFields(cfg map[string]string) map[string]str
 	}
 	return result
 }
+
+// EncryptAllFields는 설정 맵의 모든 비어있지 않은 값을 암호화하여 새 맵으로 반환한다.
+func (e *Encryptor) EncryptAllFields(cfg map[string]string) map[string]string {
+	result := make(map[string]string, len(cfg))
+	for k, v := range cfg {
+		if v != "" {
+			result[k] = e.Encrypt(v)
+		} else {
+			result[k] = v
+		}
+	}
+	return result
+}
+
+// DecryptAllFields는 설정 맵의 모든 값을 복호화하여 새 맵으로 반환한다.
+func (e *Encryptor) DecryptAllFields(cfg map[string]string) map[string]string {
+	result := make(map[string]string, len(cfg))
+	for k, v := range cfg {
+		if v != "" {
+			result[k] = e.Decrypt(v)
+		} else {
+			result[k] = v
+		}
+	}
+	return result
+}
