@@ -21,6 +21,9 @@ import (
 	"github.com/chals-go/valkey-sentinel-manager/internal/web"
 )
 
+// version is set by -ldflags at build time.
+var version = "dev"
+
 const banner = `
   ____            _   _            _   __  __
  / ___|  ___ _ __|_|_(_)_ __   ___| | |  \/  | __ _ _ __   __ _  __ _  ___ _ __
@@ -28,7 +31,7 @@ const banner = `
   ___) |  __/ | | | |_| | | | |  __/ | | |  | | (_| | | | | (_| | (_| |  __/ |
  |____/ \___|_| |_|\__|_|_| |_|\___|_| |_|  |_|\__,_|_| |_|\__,_|\__, |\___|_|
                                                                     |___/
-  Valkey Sentinel DNS Failover Manager
+  Valkey Sentinel DNS Failover Manager %s
 
 `
 
@@ -77,12 +80,12 @@ func main() {
 	flag.Parse()
 
 	if *showHelp {
-		fmt.Print(banner)
+		fmt.Printf(banner, version)
 		fmt.Print(configHelp)
 		os.Exit(0)
 	}
 
-	fmt.Print(banner)
+	fmt.Printf(banner, version)
 
 	cfg := config.Load(*configFile)
 

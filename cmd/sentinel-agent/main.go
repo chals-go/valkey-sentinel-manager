@@ -15,6 +15,9 @@ import (
 	"github.com/chals-go/valkey-sentinel-manager/internal/agent"
 )
 
+// version is set by -ldflags at build time.
+var version = "dev"
+
 const usage = `Usage: sentinel-agent <command> [args...]
 
 Commands:

@@ -1,5 +1,6 @@
 .PHONY: build build-manager build-agent clean test vet lint run \
-       build-dns-aws build-dns-azure build-dns-cloudflare build-dns-restapi
+       build-dns-aws build-dns-azure build-dns-cloudflare build-dns-restapi \
+       release
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS = -s -w -X main.version=$(VERSION)
@@ -41,6 +42,16 @@ lint: vet
 
 run: build-manager
 	./bin/sentinel-manager -config .env
+
+# Release: build all 4 binaries (linux amd64/arm64)
+release:
+	@mkdir -p dist
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/sentinel-manager-linux-amd64 ./cmd/sentinel-manager
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/sentinel-manager-linux-arm64 ./cmd/sentinel-manager
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/sentinel-agent-linux-amd64 ./cmd/sentinel-agent
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/sentinel-agent-linux-arm64 ./cmd/sentinel-agent
+	@cd dist && sha256sum * > checksums.txt
+	@echo "Release binaries built in dist/"
 
 # Docker
 docker-build:
